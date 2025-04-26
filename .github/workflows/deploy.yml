@@ -24,6 +24,10 @@ jobs:
   # Build job
   build:
     runs-on: ubuntu-latest
+    # Add this 'env' block to expose secrets to the build process
+    env:
+      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -64,6 +68,7 @@ jobs:
             ${{ runner.os }}-nextjs-${{ hashFiles('**/package-lock.json', '**/yarn.lock') }}-
       - name: Install dependencies
         run: ${{ steps.detect-package-manager.outputs.manager }} ${{ steps.detect-package-manager.outputs.command }}
+      # The build step will now have access to the environment variables
       - name: Build with Next.js
         run: ${{ steps.detect-package-manager.outputs.manager }} run build
         # The build script in package.json should be "next build && next export"
