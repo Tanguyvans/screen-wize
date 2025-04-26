@@ -68,17 +68,6 @@ jobs:
             ${{ runner.os }}-nextjs-${{ hashFiles('**/package-lock.json', '**/yarn.lock') }}-
       - name: Install dependencies
         run: ${{ steps.detect-package-manager.outputs.manager }} ${{ steps.detect-package-manager.outputs.command }}
-
-      # Add this temporary step for debugging
-      - name: Check Environment Variables
-        run: |
-          echo "Checking environment variables..."
-          echo "Supabase URL is set: ${{ env.NEXT_PUBLIC_SUPABASE_URL != '' }}"
-          echo "Supabase Anon Key is set: ${{ env.NEXT_PUBLIC_SUPABASE_ANON_KEY != '' }}"
-          # Optionally print the actual values (be careful if logs are public)
-          # echo "URL: ${{ env.NEXT_PUBLIC_SUPABASE_URL }}"
-          # echo "Key: ${{ env.NEXT_PUBLIC_SUPABASE_ANON_KEY }}"
-      # End of temporary step
       # The build step will now have access to the environment variables
       - name: Build with Next.js
         run: ${{ steps.detect-package-manager.outputs.manager }} run build
