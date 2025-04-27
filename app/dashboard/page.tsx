@@ -83,17 +83,28 @@ export default function DashboardPage() {
       setError(`Failed to load projects: ${projectsError.message}. Check RLS policies.`);
       setProjects([]); setSelectedProjectId(null);
     } else {
-      // Adjust the type assertion and mapping based on the error message
-      // Assume projectData is array of { projects: array of { id, name } }
-      const typedProjectData = projectData as Array<{ projects: Array<{ id: string; name: string; }> }> | null;
-
+      // Let Supabase infer the type initially, then process safely
       let userProjects: Project[] = []; // Initialize as empty Project array
-      if (typedProjectData) {
-          userProjects = typedProjectData
-              // Safely access the first element of the inner 'projects' array
-              .map(pm => pm.projects?.[0])
-              // Filter out undefined/null results and assert the type
-              .filter((p): p is Project => p !== undefined && p !== null);
+
+      // Check if projectData exists and is an array
+      if (projectData && Array.isArray(projectData)) {
+          userProjects = projectData
+              .map(pm => {
+                  // Access the nested 'projects' property safely
+                  // Handle cases where 'projects' might be null, not an array, or an empty array
+                  const project = pm?.projects;
+                  // Check if 'project' is an object and has the required properties
+                  if (project && typeof project === 'object' && 'id' in project && 'name' in project) {
+                      // Cast to Project if structure matches
+                      return project as Project;
+                  }
+                  return null; // Return null if structure doesn't match
+              })
+              // Filter out the nulls
+              .filter((p): p is Project => p !== null);
+      } else {
+        // Handle case where projectData is null or not an array
+        console.warn("projectData from Supabase is not in the expected format or is null:", projectData);
       }
 
       console.log("Fetched projects:", userProjects); // Debug log
