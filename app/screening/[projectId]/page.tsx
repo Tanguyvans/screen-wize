@@ -24,15 +24,8 @@ export async function generateStaticParams() {
   }));
 }
 
-// --- Define the type for the page props ---
-type ScreeningPageProps = {
-  params: { projectId: string };
-  // searchParams?: { [key: string]: string | string[] | undefined }; // Optional searchParams if needed later
-};
-
-// --- Page Server Component ---
-// Use the defined type for the props
-export default function ScreeningPage({ params }: ScreeningPageProps) {
+// --- Page Server Component (Reverted to inline type) ---
+export default function ScreeningPage({ params }: { params: { projectId: string } }) {
   const projectId = params.projectId;
 
   // Render the client component, passing the projectId as a prop
