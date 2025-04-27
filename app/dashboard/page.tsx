@@ -15,6 +15,8 @@ import { Loader2 } from "lucide-react"; // Import Loader2
 import Link from 'next/link'; // <-- Import Link for navigation
 import { Progress } from "@/components/ui/progress"; // <-- Import Progress component
 import { Separator } from "@/components/ui/separator"; // <-- Import Separator
+import { Badge } from "@/components/ui/badge"; // For invitation status later if needed
+import { ReloadIcon } from "@radix-ui/react-icons"; // For loading spinners on buttons
 
 // Define the screening decision type mirroring the enum
 type ScreeningDecision = 'include' | 'exclude' | 'maybe' | 'unscreened';
@@ -49,6 +51,20 @@ interface ScreeningStats {
     maybeCount: number;
 }
 
+// Interface for a pending invitation
+interface PendingInvitation {
+  id: string; // Invitation ID
+  project_id: string;
+  project_name: string; // We'll fetch this
+  // inviter_email: string; // Keep commented out or remove
+  created_at: string;
+}
+
+// Type for handling accept/decline actions
+type InvitationActionStatus = {
+  [invitationId: string]: 'loading' | 'error' | null;
+};
+
 export default function DashboardPage() {
   const [user, setUser] = useState<User | null>(null);
   const [projects, setProjects] = useState<Project[]>([]);
@@ -67,6 +83,12 @@ export default function DashboardPage() {
   // --- State for Screening Statistics ---
   const [screeningStats, setScreeningStats] = useState<ScreeningStats | null>(null);
   const [loadingStats, setLoadingStats] = useState(false); // State for loading stats
+
+  // --- State for Pending Invitations ---
+  const [pendingInvitations, setPendingInvitations] = useState<PendingInvitation[]>([]);
+  const [loadingInvitations, setLoadingInvitations] = useState(false);
+  const [invitationError, setInvitationError] = useState<string | null>(null);
+  const [invitationActionStatus, setInvitationActionStatus] = useState<InvitationActionStatus>({}); // To track loading/error per button
 
   // --- Fetch User Projects ---
   const fetchProjects = useCallback(async (selectFirst = false) => {
@@ -194,26 +216,193 @@ export default function DashboardPage() {
     }
   }, []); // Dependency array remains empty
 
+  // --- Fetch Pending Invitations ---
+  const fetchPendingInvitations = useCallback(async (currentUserId: string | null, currentUserEmail: string | null) => {
+    if (!currentUserId || !currentUserEmail) {
+      setPendingInvitations([]);
+      return;
+    }
+    console.log(`Fetching pending invitations for user ${currentUserEmail}...`);
+    setLoadingInvitations(true);
+    setInvitationError(null);
+
+    // Define an interface for the raw Supabase response structure
+    interface InvitationWithProject {
+        id: string;
+        project_id: string;
+        created_at: string;
+        projects: { name: string } | { name: string }[] | null; // Explicitly allow object, array, or null
+    }
+
+    try {
+      // Explicitly type the response data from Supabase
+      const { data, error } = await supabase
+        .from('project_invitations')
+        .select(`
+          id,
+          project_id,
+          created_at,
+          projects ( name )
+        `)
+        .eq('invited_user_email', currentUserEmail)
+        .eq('status', 'pending')
+        .returns<InvitationWithProject[]>(); // <-- Tell TS the expected return type
+
+      if (error) throw error;
+
+      // Format the data
+      const formattedInvitations: PendingInvitation[] = data
+        ?.map(inv => {
+          let projectName: string | null = null;
+
+          // Check if inv.projects exists and get the name
+          if (inv.projects) {
+              if (Array.isArray(inv.projects) && inv.projects.length > 0) {
+                  // It's an array, take name from first element
+                  projectName = inv.projects[0]?.name ?? null;
+              } else if (!Array.isArray(inv.projects)) {
+                  // It's a single object (handle this case just in case)
+                  projectName = inv.projects.name ?? null;
+              }
+          }
+
+          if (!projectName) {
+            console.warn(`Invitation ${inv.id} skipped, project name missing or malformed. projects data:`, inv.projects); // Log the projects data
+            return null;
+          }
+          return {
+            id: inv.id,
+            project_id: inv.project_id,
+            project_name: projectName, // Use the extracted name
+            created_at: inv.created_at,
+          };
+        })
+        .filter((inv): inv is PendingInvitation => inv !== null);
+
+      console.log("Fetched pending invitations:", formattedInvitations);
+      setPendingInvitations(formattedInvitations);
+
+    } catch (err: any) {
+      // Enhanced logging:
+      console.error("Detailed error fetching pending invitations:", JSON.stringify(err, null, 2));
+      // Log specific properties if they exist
+      if (err.message) console.error("Error message:", err.message);
+      if (err.details) console.error("Error details:", err.details);
+      if (err.code) console.error("Error code:", err.code);
+
+      setInvitationError(`Failed to load invitations: ${err.message || 'Unknown error'}`); // Use message if available
+      setPendingInvitations([]);
+    } finally {
+      setLoadingInvitations(false);
+    }
+  }, []);
+
+  // --- Handle Invitation Actions ---
+  const handleInvitationAction = useCallback(async (action: 'accept' | 'decline', invitation: PendingInvitation) => {
+      if (!user?.id) {
+          setInvitationError("User not logged in.");
+          return;
+      }
+
+      setInvitationActionStatus(prev => ({ ...prev, [invitation.id]: 'loading' }));
+      setInvitationError(null);
+
+      try {
+          if (action === 'accept') {
+              console.log(`Accepting invitation ${invitation.id} for project ${invitation.project_id}...`);
+
+              // 1. Add user to project_members
+              const { error: memberError } = await supabase
+                  .from('project_members')
+                  .insert({ user_id: user.id, project_id: invitation.project_id });
+
+              // Check for specific duplicate key error on project_members insert
+              if (memberError) {
+                  // Check if the error message indicates a duplicate key violation for project_members
+                  const isDuplicateMemberError = memberError.message.includes('duplicate key value violates unique constraint') &&
+                                                 memberError.message.includes('project_members'); // Check it relates to the right table/constraint
+
+                  if (isDuplicateMemberError) {
+                      // User is already a member, log a warning but don't throw.
+                      console.warn(`User ${user.id} is already a member of project ${invitation.project_id}. Proceeding to update invitation status.`);
+                  } else {
+                      // It's a different insertion error, re-throw it.
+                      throw new Error(`Failed to add to project members: ${memberError.message}`);
+                  }
+              }
+
+              // 2. Update invitation status (Only runs if no critical error occurred above)
+              console.log('Attempting to update invitation status...'); // Add log
+              const { error: updateError } = await supabase
+                  .from('project_invitations')
+                  .update({ status: 'accepted' }) // Using the version without 'accepted_at' based on previous step
+                  .eq('id', invitation.id);
+
+              if (updateError) {
+                 // Log the specific update error
+                 console.error("Error updating invitation status:", updateError);
+                 throw new Error(`Failed to update invitation status: ${updateError.message}`);
+              }
+
+              console.log("Invitation accepted/status updated. Refreshing projects and invitations...");
+              await fetchProjects(); // Refresh user's project list
+              await fetchPendingInvitations(user.id, user.email ?? null);
+
+          } else { // Decline logic remains the same
+              console.log(`Declining invitation ${invitation.id}...`);
+              const { error } = await supabase
+                  .from('project_invitations')
+                  .update({ status: 'declined' })
+                  .eq('id', invitation.id);
+
+              if (error) throw error;
+              console.log("Invitation declined. Refreshing invitations...");
+              await fetchPendingInvitations(user.id, user.email ?? null);
+          }
+          // Clear loading status for this specific invitation on success
+          setInvitationActionStatus(prev => ({ ...prev, [invitation.id]: null }));
+      } catch (err: any) {
+          console.error(`Error handling invitation ${action}:`, err);
+          setInvitationError(`Failed to ${action} invitation: ${err.message}`);
+          // Set error status for this specific invitation
+          setInvitationActionStatus(prev => ({ ...prev, [invitation.id]: 'error' }));
+      }
+  }, [user, fetchProjects, fetchPendingInvitations]); // Dependencies remain the same
+
   // --- Initial Data Fetch & Auth Listener ---
   useEffect(() => {
-    fetchProjects(true); // Fetch projects on initial mount
+    // Fetch projects and potentially select first
+    fetchProjects(true);
 
     const { data: authListener } = supabase.auth.onAuthStateChange(
       (event, session) => {
-        console.log("Auth event:", event); // Debug log
+        console.log("Auth event:", event);
         const currentUser = session?.user ?? null;
+        const currentEmail = session?.user?.email ?? null;
         setUser(currentUser);
+
+        if (currentUser && currentEmail) {
+          // Fetch invitations when user is available
+          fetchPendingInvitations(currentUser.id, currentEmail);
+        } else {
+          setPendingInvitations([]); // Clear invitations if logged out
+        }
+
         if (event === 'SIGNED_OUT') {
-           setError(null); setProjects([]); setSelectedProjectId(null); setParsedArticles([]); setScreeningStats(null); // Clear everything on sign out
-        } else if (event === 'SIGNED_IN') {
-           fetchProjects(true); // Refetch projects on sign in
+           // Clear everything on sign out
+           setError(null); setProjects([]); setSelectedProjectId(null); setParsedArticles([]); setScreeningStats(null); setPendingInvitations([]); setInvitationError(null);
+        } else if (event === 'SIGNED_IN' && currentUser && currentEmail) {
+           // Refetch projects and invitations on sign in
+           fetchProjects(true);
+           fetchPendingInvitations(currentUser.id, currentEmail);
         }
       }
     );
     return () => {
       authListener?.subscription.unsubscribe();
     };
-  }, [fetchProjects]); // Depend on fetchProjects callback
+    // Add fetchPendingInvitations to dependency array
+  }, [fetchProjects, fetchPendingInvitations]);
 
   // --- Fetch Screening Stats when Project or User Changes ---
   useEffect(() => {
@@ -372,6 +561,56 @@ export default function DashboardPage() {
         </div>
       </div>
       <p className="mb-4">Welcome, {user.email}!</p>
+
+      {/* --- Pending Invitations Section --- */}
+      {pendingInvitations.length > 0 && (
+        <Card className="mb-6 border-blue-500 border-2">
+          <CardHeader>
+            <CardTitle className="text-lg font-medium text-blue-700">
+              Pending Project Invitations ({pendingInvitations.length})
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {loadingInvitations && <Loader2 className="h-5 w-5 animate-spin" />}
+            {invitationError && <Alert variant="destructive"><AlertDescription>{invitationError}</AlertDescription></Alert>}
+            {pendingInvitations.map((inv) => {
+                const isLoadingAction = invitationActionStatus[inv.id] === 'loading';
+                const hasErrorAction = invitationActionStatus[inv.id] === 'error';
+                 return (
+                    <div key={inv.id} className="flex items-center justify-between p-3 bg-muted/50 rounded">
+                        <div>
+                            <p className="font-semibold">{inv.project_name}</p>
+                            <p className="text-sm text-muted-foreground">
+                                {/* You'd need to fetch inviter email/name separately if needed */}
+                                Invited {/* by [Inviter Name/Email] */} on {new Date(inv.created_at).toLocaleDateString()}
+                            </p>
+                             {hasErrorAction && <p className="text-xs text-red-500 mt-1">Action failed. Please try again.</p>}
+                        </div>
+                        <div className="flex gap-2">
+                            <Button
+                                size="sm"
+                                variant="default"
+                                className="bg-green-600 hover:bg-green-700 text-white"
+                                onClick={() => handleInvitationAction('accept', inv)}
+                                disabled={isLoadingAction}
+                            >
+                                {isLoadingAction ? <ReloadIcon className="h-4 w-4 animate-spin" /> : 'Accept'}
+                            </Button>
+                            <Button
+                                size="sm"
+                                variant="destructive"
+                                onClick={() => handleInvitationAction('decline', inv)}
+                                disabled={isLoadingAction}
+                            >
+                               {isLoadingAction ? <ReloadIcon className="h-4 w-4 animate-spin" /> : 'Decline'}
+                            </Button>
+                        </div>
+                    </div>
+                 );
+            })}
+          </CardContent>
+        </Card>
+      )}
 
       {/* --- Project Selection --- */}
       <Card className="mb-6">
