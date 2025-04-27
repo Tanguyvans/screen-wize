@@ -24,9 +24,15 @@ export async function generateStaticParams() {
   }));
 }
 
+// --- Define the type for the page props ---
+type ScreeningPageProps = {
+  params: { projectId: string };
+  // searchParams?: { [key: string]: string | string[] | undefined }; // Optional searchParams if needed later
+};
+
 // --- Page Server Component ---
-// Receives params automatically from Next.js
-export default function ScreeningPage({ params }: { params: { projectId: string } }) {
+// Use the defined type for the props
+export default function ScreeningPage({ params }: ScreeningPageProps) {
   const projectId = params.projectId;
 
   // Render the client component, passing the projectId as a prop
