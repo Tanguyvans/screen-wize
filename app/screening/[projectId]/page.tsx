@@ -24,9 +24,16 @@ export async function generateStaticParams() {
   }));
 }
 
-// --- Page Server Component (Reverted to inline type) ---
-export default function ScreeningPage({ params }: { params: { projectId: string } }) {
-  const projectId = params.projectId;
+// --- Define the type for the page props ---
+type ScreeningPageProps = {
+  params: { projectId: string };
+  // searchParams?: { [key: string]: string | string[] | undefined }; // Optional searchParams if needed later
+};
+
+// --- Page Server Component ---
+// Accept the full props object and extract params inside
+export default function ScreeningPage(props: ScreeningPageProps) {
+  const projectId = props.params.projectId; // Extract projectId here
 
   // Render the client component, passing the projectId as a prop
   return <ScreeningInterface projectId={projectId} />;
