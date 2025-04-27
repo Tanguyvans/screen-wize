@@ -24,16 +24,19 @@ export async function generateStaticParams() {
   }));
 }
 
-// --- Define the type for the page props ---
-type ScreeningPageProps = {
-  params: { projectId: string };
-  // searchParams?: { [key: string]: string | string[] | undefined }; // Optional searchParams if needed later
-};
-
 // --- Page Server Component ---
-// Accept the full props object and extract params inside
-export default function ScreeningPage(props: ScreeningPageProps) {
-  const projectId = props.params.projectId; // Extract projectId here
+// TEMPORARY DIAGNOSTIC: Use 'any' for props
+export default function ScreeningPage(props: any) {
+  // Still access params, assuming the structure is correct at runtime
+  const projectId = props?.params?.projectId;
+
+  // Add a check in case params are somehow undefined at runtime due to the 'any'
+  if (!projectId) {
+    // Handle the error appropriately - maybe render an error message
+    // or redirect. For now, just log and return null.
+    console.error("Error: projectId is missing in props!");
+    return <div>Error: Project ID not found.</div>;
+  }
 
   // Render the client component, passing the projectId as a prop
   return <ScreeningInterface projectId={projectId} />;
