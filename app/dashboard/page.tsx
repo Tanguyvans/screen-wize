@@ -83,18 +83,29 @@ export default function DashboardPage() {
       setError(`Failed to load projects: ${projectsError.message}. Check RLS policies.`);
       setProjects([]); setSelectedProjectId(null);
     } else {
-      // Supabase with inner join returns the project directly if not null
-      const userProjects = projectData?.map(pm => pm.projects).filter(p => p !== null) as Project[] || [];
+      // Adjust the type assertion and mapping based on the error message
+      // Assume projectData is array of { projects: array of { id, name } }
+      const typedProjectData = projectData as Array<{ projects: Array<{ id: string; name: string; }> }> | null;
+
+      let userProjects: Project[] = []; // Initialize as empty Project array
+      if (typedProjectData) {
+          userProjects = typedProjectData
+              // Safely access the first element of the inner 'projects' array
+              .map(pm => pm.projects?.[0])
+              // Filter out undefined/null results and assert the type
+              .filter((p): p is Project => p !== undefined && p !== null);
+      }
+
       console.log("Fetched projects:", userProjects); // Debug log
       setProjects(userProjects);
       const currentSelectionValid = userProjects.some(p => p.id === selectedProjectId);
 
       if (selectFirst && userProjects.length > 0 && !selectedProjectId) {
-         console.log("Selecting first project:", userProjects[0].id); // Debug log
+         console.log("Selecting first project:", userProjects[0].id);
         setSelectedProjectId(userProjects[0].id);
       } else if (!currentSelectionValid) {
          const newSelection = userProjects.length > 0 ? userProjects[0].id : null;
-         console.log("Current selection invalid, setting to:", newSelection); // Debug log
+         console.log("Current selection invalid, setting to:", newSelection);
          setSelectedProjectId(newSelection);
       }
     }
