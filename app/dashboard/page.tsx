@@ -218,7 +218,7 @@ export default function DashboardPage() {
   // --- Fetch Screening Stats when Project or User Changes ---
   useEffect(() => {
       if (selectedProjectId && user?.id) {
-          fetchScreeningStats(selectedProjectId, user.id);
+          fetchScreeningStats(selectedProjectId, user.id ?? null);
       } else {
           setScreeningStats(null); // Clear stats if project/user changes to null
       }
@@ -335,10 +335,10 @@ export default function DashboardPage() {
           if (errorCount === 0) {
              setProcessingMessage(`Successfully saved/updated ${savedCount} articles to the project.`);
              setParsedArticles([]); // Clear the parsed list after successful save
-             await fetchScreeningStats(selectedProjectId, user?.id); // <-- Refresh stats
+             await fetchScreeningStats(selectedProjectId, user?.id ?? null);
           } else {
               setProcessingMessage(`Finished saving. Processed ${savedCount} articles, but encountered errors for ${errorCount}. Some may need re-importing.`);
-              await fetchScreeningStats(selectedProjectId, user?.id); // <-- Refresh stats even if errors occurred
+              await fetchScreeningStats(selectedProjectId, user?.id ?? null);
           }
            // TODO: Trigger a refresh of the *displayed* article list from DB if showing DB articles
 
@@ -349,7 +349,7 @@ export default function DashboardPage() {
       } finally {
           setIsProcessing(false);
       }
-  }, [parsedArticles, selectedProjectId, fetchScreeningStats, user?.id]); // Update dependency
+  }, [parsedArticles, selectedProjectId, fetchScreeningStats, user?.id]); // Keep user?.id in dependencies
 
   // --- Render Logic ---
   if (loading) { return <div className="container mx-auto px-4 py-8 text-center">Loading dashboard...</div>; }

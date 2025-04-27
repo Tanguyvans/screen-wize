@@ -24,11 +24,15 @@ export async function generateStaticParams() {
   }));
 }
 
+// --- Define the type for the page props ---
+type ScreeningPageProps = {
+  params: { projectId: string };
+};
+
 // --- Page Server Component ---
-// TEMPORARY DIAGNOSTIC: Use 'any' for props
-export default function ScreeningPage(props: any) {
-  // Still access params, assuming the structure is correct at runtime
-  const projectId = props?.params?.projectId;
+// Revert back to this after fixing the other build error
+export default function ScreeningPage(props: ScreeningPageProps) {
+  const projectId = props.params.projectId;
 
   // Add a check in case params are somehow undefined at runtime due to the 'any'
   if (!projectId) {
