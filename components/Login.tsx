@@ -1,8 +1,8 @@
-'use client'; // Required for hooks like useState and event handlers
+'use client';
 
 import { useState } from 'react';
-import { supabase } from '@/lib/supabaseClient'; // Adjust path if needed
-import { useRouter } from 'next/navigation'; // Make sure useRouter is imported
+import { supabase } from '@/lib/supabaseClient';
+import { useRouter } from 'next/navigation';
 
 // Shadcn UI Imports
 import { Button } from "@/components/ui/button"
@@ -42,19 +42,9 @@ export default function Login() {
     setLoading(true);
     setMessage('');
 
-    // Commented out options block
-    // options: {
-    //   emailRedirectTo: 'http://localhost:3000/' // Or your deployment URL
-    // }
-
-    // Put the actual call on its own line
     const { error } = await supabase.auth.signUp({
       email: email,
       password: password,
-      // You might want to include options here if needed later
-      // options: {
-      //    emailRedirectTo: `${window.location.origin}/login?message=Check email for verification link`
-      // }
     });
 
     if (error) {
@@ -113,11 +103,6 @@ export default function Login() {
          <div className="relative w-full">
            <div className="absolute inset-0 flex items-center">
              <span className="w-full border-t" />
-           </div>
-           <div className="relative flex justify-center text-xs uppercase">
-             <span className="bg-card px-2 text-muted-foreground">
-               Or
-             </span>
            </div>
          </div>
         <Button

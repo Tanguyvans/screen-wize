@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabaseClient'; // Use client-side Supabase
 import LogoutButton from './LogoutButton';
-import { User } from '@supabase/supabase-js'; // Import types
+import { User } from '@supabase/supabase-js'; // Removed PostgrestError for now
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"; // Shadcn Select
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"; // Shadcn Card
 import { CreateProjectDialog } from '@/components/CreateProjectDialog'; // Import Create dialog
@@ -12,21 +12,24 @@ import { Button } from '@/components/ui/button'; // Import Button
 import { ArticleDropzone } from '@/components/ArticleDropzone'; // <-- Import Dropzone
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"; // For messages
 import { Loader2 } from "lucide-react"; // Import Loader2
+import Link from 'next/link'; // <-- Import Link for navigation
+import { Progress } from "@/components/ui/progress"; // <-- Import Progress component
+import { Separator } from "@/components/ui/separator"; // <-- Import Separator
 
-// Define a type for the project data we expect
+// Define the screening decision type mirroring the enum
+type ScreeningDecision = 'include' | 'exclude' | 'maybe' | 'unscreened';
+
 interface Project {
   id: string;
   name: string;
-  // Add other project fields as needed
 }
 
-// Define a type for the article details parsed from the file
+// Keep ArticleDetail simple for parsed articles
 interface ArticleDetail {
   pmid: string;
   title: string;
   abstract: string;
-  id?: string; // Optional DB id
-  screening_status?: string;
+  id?: string; // Keep optional ID from parsing if needed elsewhere
 }
 
 // Type for data structure when saving articles
@@ -35,6 +38,15 @@ interface ArticleSaveData {
     pmid: string;
     title: string;
     abstract: string;
+}
+
+// Type for the screening stats we will fetch
+interface ScreeningStats {
+    totalArticles: number;
+    userScreenedCount: number;
+    includeCount: number;
+    excludeCount: number;
+    maybeCount: number;
 }
 
 export default function DashboardPage() {
@@ -51,10 +63,10 @@ export default function DashboardPage() {
 
   // State to hold the parsed articles before saving
   const [parsedArticles, setParsedArticles] = useState<ArticleDetail[]>([]);
-  // State to hold articles FETCHED FROM THE DATABASE for the selected project
-  const [dbArticles, setDbArticles] = useState<ArticleDetail[]>([]);
-  // State for loading DB articles specifically
-  const [loadingDbArticles, setLoadingDbArticles] = useState(false);
+
+  // --- State for Screening Statistics ---
+  const [screeningStats, setScreeningStats] = useState<ScreeningStats | null>(null);
+  const [loadingStats, setLoadingStats] = useState(false); // State for loading stats
 
   // --- Fetch User Projects ---
   const fetchProjects = useCallback(async (selectFirst = false) => {
@@ -123,41 +135,64 @@ export default function DashboardPage() {
     setLoading(false);
   }, [selectedProjectId]);
 
-  // --- Fetch Articles FROM DATABASE for the Selected Project ---
-  const fetchDbArticles = useCallback(async (projectId: string | null) => {
-    if (!projectId) {
-      setDbArticles([]); // Clear DB articles if no project selected
-      return;
+  // --- Fetch Screening Statistics ---
+  const fetchScreeningStats = useCallback(async (projectId: string | null, currentUserId: string | null) => {
+    if (!projectId || !currentUserId) {
+      setScreeningStats(null); return;
     }
-    console.log(`Fetching articles from DB for project ${projectId}...`);
-    setLoadingDbArticles(true);
-    setError(null); // Clear general errors before fetching articles
+    console.log(`Fetching screening stats for project ${projectId}, user ${currentUserId}...`);
+    setLoadingStats(true); setError(null);
 
     try {
-       // Fetch articles linked to the selected project
-       // Add RLS SELECT policy on 'articles' table first!
-      const { data, error: fetchError } = await supabase
-        .from('articles')
-        .select('id, pmid, title, abstract, screening_status') // Select desired columns
-        .eq('project_id', projectId)
-        .order('created_at', { ascending: false }); // Optional: order by creation date
+        // 1. Get total article count for the project (remains the same)
+        const { count: totalCount, error: totalError } = await supabase
+            .from('articles')
+            .select('*', { count: 'exact', head: true })
+            .eq('project_id', projectId);
 
-      if (fetchError) {
-        console.error("Error fetching DB articles:", fetchError);
-        setError(`Failed to load articles from database: ${fetchError.message}. Check RLS policies.`);
-        setDbArticles([]);
-      } else {
-        setDbArticles(data || []);
-        console.log(`Fetched ${data?.length ?? 0} articles from DB.`);
-      }
+        if (totalError) throw new Error(`Failed to get total article count: ${totalError.message}`);
+
+        // 2. Get ALL screening decisions made by the user for this project
+        const { data: userDecisions, error: decisionError } = await supabase
+            .from('screening_decisions')
+            .select('decision') // Select only the decision column
+            .eq('project_id', projectId)
+            .eq('user_id', currentUserId)
+            .in('decision', ['include', 'exclude', 'maybe']); // Only fetch actual decisions
+
+        if (decisionError) throw new Error(`Failed to get user decisions: ${decisionError.message}`);
+
+        // 3. Count the decisions client-side
+        let includeCount = 0;
+        let excludeCount = 0;
+        let maybeCount = 0;
+
+        userDecisions?.forEach(item => {
+            if (item.decision === 'include') includeCount++;
+            else if (item.decision === 'exclude') excludeCount++;
+            else if (item.decision === 'maybe') maybeCount++;
+        });
+
+        const userScreenedCount = includeCount + excludeCount + maybeCount;
+
+        // 4. Set the state with the calculated stats
+        setScreeningStats({
+            totalArticles: totalCount ?? 0,
+            userScreenedCount: userScreenedCount,
+            includeCount: includeCount,
+            excludeCount: excludeCount,
+            maybeCount: maybeCount,
+        });
+        console.log("Screening stats calculated:", { totalArticles: totalCount, userScreenedCount, includeCount, excludeCount, maybeCount });
+
     } catch (err: any) {
-       console.error("Unexpected error fetching DB articles:", err);
-       setError("An unexpected error occurred while fetching articles.");
-       setDbArticles([]);
+        console.error("Error fetching screening stats:", err);
+        setError(`Failed to load screening stats: ${err.message}`);
+        setScreeningStats(null);
     } finally {
-       setLoadingDbArticles(false);
+        setLoadingStats(false);
     }
-  }, []); // Dependency: only the supabase client instance
+  }, []); // Dependency array remains empty
 
   // --- Initial Data Fetch & Auth Listener ---
   useEffect(() => {
@@ -169,7 +204,7 @@ export default function DashboardPage() {
         const currentUser = session?.user ?? null;
         setUser(currentUser);
         if (event === 'SIGNED_OUT') {
-           setError(null); setProjects([]); setSelectedProjectId(null); setParsedArticles([]); setDbArticles([]); // Clear everything on sign out
+           setError(null); setProjects([]); setSelectedProjectId(null); setParsedArticles([]); setScreeningStats(null); // Clear everything on sign out
         } else if (event === 'SIGNED_IN') {
            fetchProjects(true); // Refetch projects on sign in
         }
@@ -180,26 +215,22 @@ export default function DashboardPage() {
     };
   }, [fetchProjects]); // Depend on fetchProjects callback
 
-  // --- Fetch DB Articles when Project Changes ---
+  // --- Fetch Screening Stats when Project or User Changes ---
   useEffect(() => {
-      // Fetch articles whenever selectedProjectId changes (and is not null)
-      if (selectedProjectId) {
-          fetchDbArticles(selectedProjectId);
+      if (selectedProjectId && user?.id) {
+          fetchScreeningStats(selectedProjectId, user.id);
       } else {
-          setDbArticles([]); // Clear DB articles if project is deselected
+          setScreeningStats(null); // Clear stats if project/user changes to null
       }
-  }, [selectedProjectId, fetchDbArticles]); // Re-run when project ID or fetch function changes
+  }, [selectedProjectId, user, fetchScreeningStats]); // Depend on stats fetch function
 
   // --- Handle Project Selection Change ---
   const handleProjectSelect = (projectId: string) => {
     console.log("Project selected:", projectId);
     setSelectedProjectId(projectId);
-    // Clear file processing state and parsed articles when project changes
-    setProcessingMessage(null);
-    setProcessingError(null);
-    setIsProcessing(false);
-    setParsedArticles([]);
-    // DB articles will be cleared/refetched by the useEffect above
+    // Clear file processing state and parsed articles
+    setProcessingMessage(null); setProcessingError(null); setIsProcessing(false); setParsedArticles([]);
+    // Stats will be cleared/refetched by the useEffect hook above
   };
 
   // --- Refresh Projects List After Creation ---
@@ -304,10 +335,10 @@ export default function DashboardPage() {
           if (errorCount === 0) {
              setProcessingMessage(`Successfully saved/updated ${savedCount} articles to the project.`);
              setParsedArticles([]); // Clear the parsed list after successful save
-             await fetchDbArticles(selectedProjectId); // <-- Refresh DB articles list
+             await fetchScreeningStats(selectedProjectId, user?.id); // <-- Refresh stats
           } else {
               setProcessingMessage(`Finished saving. Processed ${savedCount} articles, but encountered errors for ${errorCount}. Some may need re-importing.`);
-              await fetchDbArticles(selectedProjectId); // <-- Refresh DB articles list even if errors occurred
+              await fetchScreeningStats(selectedProjectId, user?.id); // <-- Refresh stats even if errors occurred
           }
            // TODO: Trigger a refresh of the *displayed* article list from DB if showing DB articles
 
@@ -318,14 +349,17 @@ export default function DashboardPage() {
       } finally {
           setIsProcessing(false);
       }
-  }, [parsedArticles, selectedProjectId, fetchDbArticles]); // End of handleSaveArticles
-
+  }, [parsedArticles, selectedProjectId, fetchScreeningStats, user?.id]); // Update dependency
 
   // --- Render Logic ---
   if (loading) { return <div className="container mx-auto px-4 py-8 text-center">Loading dashboard...</div>; }
   if (!user) { return <div className="container mx-auto px-4 py-8 text-center">Redirecting to login...</div>; }
 
   const selectedProject = projects.find(p => p.id === selectedProjectId);
+  // Calculate progress percentage
+  const progressPercent = screeningStats && screeningStats.totalArticles > 0
+    ? Math.round((screeningStats.userScreenedCount / screeningStats.totalArticles) * 100)
+    : 0;
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -424,38 +458,66 @@ export default function DashboardPage() {
                       </div>
                   )}
               </div>
-                {/* --- Articles IN PROJECT (Fetched from DB) --- */}
-                 <div className="mt-8">
-                    <h3 className="text-lg font-semibold mb-3 border-t pt-4">
-                        Articles in Project ({dbArticles.length})
-                    </h3>
-                     {loadingDbArticles ? (
-                         <div className="text-center text-muted-foreground">Loading articles...</div>
-                     ) : dbArticles.length > 0 ? (
-                         <div className="mt-4 space-y-3 max-h-[500px] overflow-y-auto pr-2">
-                             {dbArticles.map((article) => (
-                                 <Card key={article.id ?? article.pmid} className="overflow-hidden"> {/* Use DB id if available */}
-                                     <CardHeader className="p-3 bg-muted/50">
-                                         <CardTitle className="text-base">{article.title}</CardTitle>
-                                         <p className="text-xs text-muted-foreground">PMID: {article.pmid} | Status: {article.screening_status}</p>
-                                     </CardHeader>
-                                     <CardContent className="p-3 text-sm">
-                                         <p className="line-clamp-3">{article.abstract}</p>
-                                          {/* TODO: Screening buttons (Include/Exclude/Maybe) */}
-                                          {/* <div className="mt-2 flex gap-2">
-                                              <Button size="xs" variant="outline">Include</Button>
-                                              <Button size="xs" variant="outline">Exclude</Button>
-                                          </div> */}
-                                     </CardContent>
-                                 </Card>
-                             ))}
-                         </div>
+
+              {/* --- Screening Stats & Actions --- */}
+                 <div className="mt-8 border-t pt-6">
+                    <div className="flex justify-between items-center mb-4">
+                        <h3 className="text-lg font-semibold">
+                            Your Screening Progress
+                        </h3>
+                        {/* Show Start Screening button only if there are articles */}
+                        {screeningStats && screeningStats.totalArticles > 0 && (
+                            <Link href={`/screening/${selectedProjectId}`} passHref>
+                                <Button size="sm">
+                                    {screeningStats.userScreenedCount > 0 ? "Continue Screening" : "Start Screening"}
+                                </Button>
+                            </Link>
+                        )}
+                    </div>
+
+                    {loadingStats ? (
+                         <div className="flex justify-center items-center py-8"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>
+                    ) : screeningStats ? (
+                        <div>
+                            {screeningStats.totalArticles > 0 ? (
+                                <>
+                                    <div className="mb-2 flex justify-between text-sm text-muted-foreground">
+                                        <span>
+                                            {screeningStats.userScreenedCount} / {screeningStats.totalArticles} articles screened
+                                        </span>
+                                        <span>{progressPercent}%</span>
+                                    </div>
+                                    <Progress value={progressPercent} className="w-full mb-4" />
+                                    <Separator className="my-4" />
+                                    <div className="grid grid-cols-3 gap-4 text-center">
+                                        <div>
+                                            <p className="text-xs text-muted-foreground">Included</p>
+                                            <p className="text-xl font-bold">{screeningStats.includeCount}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-xs text-muted-foreground">Maybe</p>
+                                            <p className="text-xl font-bold">{screeningStats.maybeCount}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-xs text-muted-foreground">Excluded</p>
+                                            <p className="text-xl font-bold">{screeningStats.excludeCount}</p>
+                                        </div>
+                                    </div>
+                                </>
+                             ) : (
+                                 <p className="text-center text-muted-foreground py-4">
+                                    No articles have been imported into this project yet.
+                                 </p>
+                             )}
+                        </div>
+                     ) : error ? ( // Display fetch error if stats couldn't load
+                         <Alert variant="destructive">
+                           <AlertDescription>{error}</AlertDescription>
+                         </Alert>
                      ) : (
-                         <div className="p-4 border border-dashed border-gray-300 rounded-lg min-h-[100px] flex items-center justify-center">
-                            <p className="text-center text-muted-foreground">
-                                No articles found in this project database yet. Import some using the section above.
-                             </p>
-                         </div>
+                         <p className="text-center text-muted-foreground py-4">
+                            No screening data available.
+                         </p>
                      )}
                  </div>
            </div>
