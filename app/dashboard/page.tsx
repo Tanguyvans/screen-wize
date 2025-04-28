@@ -700,18 +700,29 @@ export default function DashboardPage() {
 
               {/* --- Screening Stats & Actions --- */}
                  <div className="mt-8 border-t pt-6">
-                    <div className="flex justify-between items-center mb-4">
+                    <div className="flex justify-between items-center mb-4 gap-2">
                         <h3 className="text-lg font-semibold">
                             Your Screening Progress
                         </h3>
-                        {/* Show Start Screening button only if there are articles */}
-                        {screeningStats && screeningStats.totalArticles > 0 && (
-                            <Link href={`/screening/${selectedProjectId}`} passHref>
-                                <Button size="sm">
-                                    {screeningStats.userScreenedCount > 0 ? "Continue Screening" : "Start Screening"}
-                                </Button>
-                            </Link>
-                        )}
+                        {/* Container for buttons */}
+                        <div className="flex items-center gap-2">
+                            {/* Review Conflicts Button */}
+                            {screeningStats && screeningStats.totalArticles > 0 && (
+                                <Link href="/review" passHref>
+                                    <Button size="sm" variant="secondary">
+                                        Review Conflicts
+                                    </Button>
+                                </Link>
+                            )}
+                            {/* Start/Continue Screening Button */}
+                            {screeningStats && screeningStats.totalArticles > 0 && (
+                                <Link href={`/screening/${selectedProjectId}`} passHref>
+                                    <Button size="sm">
+                                        {screeningStats.userScreenedCount > 0 ? "Continue Screening" : "Start Screening"}
+                                    </Button>
+                                </Link>
+                            )}
+                        </div>
                     </div>
 
                     {loadingStats ? (
