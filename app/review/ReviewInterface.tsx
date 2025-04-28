@@ -26,11 +26,23 @@ interface UserReviewStats {
   totalScreened: number;
 }
 
-// Type for a single decision linked to a user
+// --- NEW: Type for aggregated stats per agent ---
+interface AgentReviewStats {
+    agentId: string;
+    agentName: string; // Display identifier
+    includeCount: number;
+    maybeCount: number;
+    excludeCount: number;
+    totalScreened: number;
+}
+
+// Type for a single decision linked to a user OR an agent
 interface Decision {
-  user_id: string;
+  user_id: string | null; // Allow null
+  agent_id: string | null; // Add agent_id, allow null
   decision: 'include' | 'exclude' | 'maybe';
   user_email?: string; // Optional: To store user email/identifier
+  agent_name?: string; // Optional: To store agent name
 }
 
 // Type for an article on the review page, including its decisions and conflict status
@@ -59,6 +71,7 @@ export default function ReviewInterface() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null); // State for selected project
   const [userStats, setUserStats] = useState<UserReviewStats[]>([]); // State for user stats
+  const [agentStats, setAgentStats] = useState<AgentReviewStats[]>([]); // <-- NEW State for Agent Stats
   const [conflictingArticles, setConflictingArticles] = useState<ReviewArticle[]>([]); // State for conflict list
   const [conflictCount, setConflictCount] = useState<number>(0); // State for total conflicts
   const [isLoadingProjects, setIsLoadingProjects] = useState(true); // Loading for projects
@@ -121,10 +134,11 @@ export default function ReviewInterface() {
   }, [user?.id, fetchProjects]);
 
 
-  // --- Fetch Review Data (Aggregates stats AND identifies conflicts) ---
+  // --- Fetch Review Data (Modified to include agent stats calculation AND Decision Pagination) ---
   const fetchReviewData = useCallback(async () => {
     if (!selectedProjectId) {
         setUserStats([]);
+        setAgentStats([]); // <-- Clear agent stats
         setConflictingArticles([]);
         setConflictCount(0);
         return;
@@ -133,27 +147,57 @@ export default function ReviewInterface() {
     setIsLoadingReviewData(true);
     setError(null);
     setUserStats([]); // Clear previous results
+    setAgentStats([]); // <-- Clear agent stats
     setConflictingArticles([]);
     setConflictCount(0);
     console.log(`Fetching full review data for project: ${selectedProjectId}`);
 
     try {
-        // 1. Fetch ALL screening decisions (raw)
-        const { data: allDecisionsRaw, error: decisionError } = await supabase
-            .from('screening_decisions')
-            .select('article_id, user_id, decision')
-            .eq('project_id', selectedProjectId)
-            .in('decision', ['include', 'exclude', 'maybe']);
+        // --- MODIFIED: Fetch ALL decisions in batches ---
+        let allDecisionsRaw: { article_id: string; user_id: string | null; agent_id: string | null; decision: 'include' | 'exclude' | 'maybe'; }[] = [];
+        let currentOffset = 0;
+        const BATCH_DECISION_SIZE = 1000; // Supabase default limit, can adjust
+        let fetchMore = true;
+        console.log("Fetching ALL decisions in batches...");
 
-        if (decisionError) throw new Error(`Failed to get project decisions: ${decisionError.message}`);
-        if (!allDecisionsRaw || allDecisionsRaw.length === 0) {
+        while (fetchMore) {
+            const { data: batchDecisions, error: decisionError } = await supabase
+                .from('screening_decisions')
+                .select('article_id, user_id, agent_id, decision')
+                .eq('project_id', selectedProjectId)
+                .in('decision', ['include', 'exclude', 'maybe'])
+                .range(currentOffset, currentOffset + BATCH_DECISION_SIZE - 1); // Fetch in batches
+
+            if (decisionError) {
+                 console.error(`Failed to get decisions batch (offset ${currentOffset}):`, decisionError);
+                 throw new Error(`Failed to get decisions batch: ${decisionError.message}`);
+            }
+
+            if (batchDecisions && batchDecisions.length > 0) {
+                // Add type assertion if needed, or ensure Supabase types are robust
+                allDecisionsRaw = allDecisionsRaw.concat(batchDecisions as any);
+                currentOffset += batchDecisions.length;
+                if (batchDecisions.length < BATCH_DECISION_SIZE) {
+                    fetchMore = false; // Reached the end
+                }
+                 console.log(`Fetched batch, total decisions now: ${allDecisionsRaw.length}`);
+            } else {
+                fetchMore = false; // No more decisions found
+            }
+        }
+        console.log(`Total decisions fetched for project: ${allDecisionsRaw.length}`);
+        // --- End of MODIFIED fetching ---
+
+        if (allDecisionsRaw.length === 0) {
             console.log("No decisions found for this project.");
             setIsLoadingReviewData(false);
             return; // Nothing more to process
         }
 
-        // 2. Get unique user IDs and fetch profiles (Two-Step)
-        const userIds = [...new Set(allDecisionsRaw.map(d => d.user_id))];
+        // 2. Get unique user IDs AND agent IDs & Fetch names/emails
+        const userIds = [...new Set(allDecisionsRaw.map(d => d.user_id).filter(id => id !== null))] as string[];
+        const agentIds = [...new Set(allDecisionsRaw.map(d => d.agent_id).filter(id => id !== null))] as string[];
+
         const userEmailMap = new Map<string, string>();
         if (userIds.length > 0) {
             const { data: profiles, error: profileError } = await supabase
@@ -164,34 +208,74 @@ export default function ReviewInterface() {
             else { profiles?.forEach(p => { if (p.id && p.email) { userEmailMap.set(p.id, p.email); } }); }
         }
 
-        // 3. Process for User Stats AND Article Decisions simultaneously
+        const agentNameMap = new Map<string, string>();
+        if (agentIds.length > 0) {
+             console.log("Fetching agent names for IDs:", agentIds);
+            const { data: agents, error: agentError } = await supabase
+                .from('ai_agents')
+                .select('id, name')
+                .in('id', agentIds);
+            if (agentError) { console.warn("Could not fetch agent names:", agentError.message); }
+            else { agents?.forEach(a => { if (a.id && a.name) { agentNameMap.set(a.id, a.name); } }); }
+        }
+        console.log("User Email Map:", userEmailMap);
+        console.log("Agent Name Map:", agentNameMap);
+        // --------------------------------
+
+        // 3. Process for User Stats, AGENT Stats, AND Article Decisions
         const statsByUser = new Map<string, UserReviewStats>();
+        const statsByAgent = new Map<string, AgentReviewStats>(); // <-- NEW Map for Agent Stats
         const decisionsByArticle = new Map<string, Decision[]>();
 
         allDecisionsRaw.forEach(rawDecision => {
-            const userId = rawDecision.user_id;
             const articleId = rawDecision.article_id;
-            const userIdentifier = userEmailMap.get(userId) || userId;
 
-            // --- Update User Stats ---
-            if (!statsByUser.has(userId)) {
-                statsByUser.set(userId, { userId, userEmail: userIdentifier, includeCount: 0, maybeCount: 0, excludeCount: 0, totalScreened: 0 });
+            // --- Update User Stats (Only if user_id is present) ---
+            if (rawDecision.user_id) {
+                const userId = rawDecision.user_id;
+                const userIdentifier = userEmailMap.get(userId) || userId;
+                if (!statsByUser.has(userId)) {
+                    statsByUser.set(userId, { userId, userEmail: userIdentifier, includeCount: 0, maybeCount: 0, excludeCount: 0, totalScreened: 0 });
+                }
+                const currentUserStats = statsByUser.get(userId)!;
+                if (rawDecision.decision === 'include') currentUserStats.includeCount++;
+                else if (rawDecision.decision === 'maybe') currentUserStats.maybeCount++;
+                else if (rawDecision.decision === 'exclude') currentUserStats.excludeCount++;
+                currentUserStats.totalScreened++;
+                statsByUser.set(userId, currentUserStats);
             }
-            const currentUserStats = statsByUser.get(userId)!;
-            if (rawDecision.decision === 'include') currentUserStats.includeCount++;
-            else if (rawDecision.decision === 'maybe') currentUserStats.maybeCount++;
-            else if (rawDecision.decision === 'exclude') currentUserStats.excludeCount++;
-            currentUserStats.totalScreened++;
-            statsByUser.set(userId, currentUserStats); // Update map
+            // --- NEW: Update Agent Stats (Only if agent_id is present) ---
+            else if (rawDecision.agent_id) {
+                const agentId = rawDecision.agent_id;
+                const agentIdentifier = agentNameMap.get(agentId) || agentId; // Use name or ID
+                if (!statsByAgent.has(agentId)) {
+                    statsByAgent.set(agentId, { agentId, agentName: agentIdentifier, includeCount: 0, maybeCount: 0, excludeCount: 0, totalScreened: 0 });
+                }
+                const currentAgentStats = statsByAgent.get(agentId)!;
+                if (rawDecision.decision === 'include') currentAgentStats.includeCount++;
+                else if (rawDecision.decision === 'maybe') currentAgentStats.maybeCount++;
+                else if (rawDecision.decision === 'exclude') currentAgentStats.excludeCount++;
+                currentAgentStats.totalScreened++;
+                statsByAgent.set(agentId, currentAgentStats); // Update map
+            }
 
-            // --- Update Decisions By Article ---
-            const decisionForArticle: Decision = { user_id: userId, decision: rawDecision.decision, user_email: userIdentifier };
+            // --- Update Decisions By Article (Populate with name/email) ---
+            const decisionForArticle: Decision = {
+                 user_id: rawDecision.user_id, // Keep the ID
+                 agent_id: rawDecision.agent_id, // Keep the ID
+                 decision: rawDecision.decision,
+                 // Look up email if user_id exists
+                 user_email: rawDecision.user_id ? (userEmailMap.get(rawDecision.user_id) || undefined) : undefined,
+                 // Look up agent name if agent_id exists
+                 agent_name: rawDecision.agent_id ? (agentNameMap.get(rawDecision.agent_id) || undefined) : undefined,
+            };
             const existingDecisions = decisionsByArticle.get(articleId) || [];
             decisionsByArticle.set(articleId, [...existingDecisions, decisionForArticle]);
         });
 
         // Set user stats state
         setUserStats(Array.from(statsByUser.values()));
+        setAgentStats(Array.from(statsByAgent.values())); // <-- Set agent stats state
 
         // 4. Fetch article details for articles that have decisions
         const articleIdsWithDecisions = Array.from(decisionsByArticle.keys());
@@ -204,33 +288,57 @@ export default function ReviewInterface() {
         console.log('Article IDs for filtering:', articleIdsWithDecisions);
         console.log('Number of Article IDs:', articleIdsWithDecisions.length);
 
-        // --- Temporarily replace the failing query ---
-        console.log("Fetching ONE article details for review (TESTING)...");
-        const { data: articlesData, error: articlesError } = await supabase
-            .from('articles')
-            .select('id, pmid, title, abstract')
-            .eq('project_id', selectedProjectId)
-            .limit(1);
-         // --------------------------------------------
+        // --- IMPORTANT: Fetch ALL relevant articles, not just one ---
+        // --- Remove the .limit(1) and use .in() filter ---
+        console.log(`Fetching details for ${articleIdsWithDecisions.length} articles...`);
+        const BATCH_SIZE = 500; // Handle potential large number of articles
+        let articlesData: { id: string; pmid: string; title: string; abstract: string; }[] = [];
+        for (let i = 0; i < articleIdsWithDecisions.length; i += BATCH_SIZE) {
+             const batchIds = articleIdsWithDecisions.slice(i, i + BATCH_SIZE);
+             const { data: batchData, error: articlesError } = await supabase
+                 .from('articles')
+                 .select('id, pmid, title, abstract') // Ensure pmid is selected
+                 .eq('project_id', selectedProjectId) // Ensure correct project
+                 .in('id', batchIds); // Fetch articles with decisions
 
-        if (articlesError) {
-             console.error("Supabase articles fetch error object (TESTING):", JSON.stringify(articlesError, null, 2));
-            throw new Error(`Failed to fetch relevant project articles (TESTING): ${articlesError.message}`);
+             if (articlesError) {
+                 console.error("Supabase articles fetch error object:", JSON.stringify(articlesError, null, 2));
+                 throw new Error(`Failed to fetch project articles batch: ${articlesError.message}`);
+             }
+             if (batchData) {
+                 articlesData = articlesData.concat(batchData as { id: string; pmid: string; title: string; abstract: string; }[]);
+             }
         }
-        console.log("TESTING - Fetched article data:", articlesData) // See if this works
+        console.log(`Fetched details for ${articlesData.length} articles.`);
+        // ------------------------------------------------------
 
         // 5. Identify Conflicts and build final list
         let currentConflictCount = 0;
-        const articlesForReview: ReviewArticle[] = (articlesData || []).map(article => {
-             const decisions = decisionsByArticle.get(article.id) || []; // Should always have decisions here
+        console.log(`Evaluating conflicts for ${articlesData.length} articles...`);
+        const articlesForReview: ReviewArticle[] = articlesData.map(article => {
+             const decisions = decisionsByArticle.get(article.id) || [];
              let conflict = false;
+
+             // --- Add Detailed Logging ---
+             if (decisions.length >= 1) {
+                console.log(`Article ID: ${article.id} (PMID: ${article.pmid}) - Decisions Found:`, JSON.stringify(decisions.map(d => ({ d: d.decision, u: d.user_id, ue: d.user_email, a: d.agent_id, an: d.agent_name })), null, 2));
+             }
+             // ----------------------------
+
+             // Conflict check: at least two decisions, and they are not all the same
              if (decisions.length >= 2) {
                  const uniqueDecisions = new Set(decisions.map(d => d.decision));
                  if (uniqueDecisions.size > 1) {
+                     console.log(`   -> CONFLICT DETECTED for Article ${article.id}`);
                      conflict = true;
                      currentConflictCount++;
+                 } else {
+                     console.log(`   -> No conflict (all decisions same value) for Article ${article.id}`);
                  }
+             } else if (decisions.length < 2) {
+                 console.log(`   -> No conflict (< 2 decisions) for Article ${article.id}`);
              }
+
              return {
                  id: article.id,
                  pmid: article.pmid,
@@ -245,12 +353,14 @@ export default function ReviewInterface() {
         setConflictingArticles(articlesForReview.filter(a => a.conflict));
         setConflictCount(currentConflictCount);
 
-        console.log(`Processed decisions for ${statsByUser.size} users. Found ${currentConflictCount} conflicts.`);
+        // --- Updated Log Message ---
+        console.log(`Review data processed. Users with decisions: ${statsByUser.size}. Agents with decisions: ${statsByAgent.size}. Total conflicts found: ${currentConflictCount}. Articles with conflicts displayed: ${articlesForReview.filter(a => a.conflict).length}`);
 
     } catch (err: any) {
         console.error("Error fetching review data:", err);
         setError(`Failed to load review data: ${err.message}`);
         setUserStats([]);
+        setAgentStats([]); // Clear agent stats on error too
         setConflictingArticles([]);
         setConflictCount(0);
     } finally {
@@ -270,6 +380,7 @@ export default function ReviewInterface() {
     setSelectedProjectId(projectId);
     // Clear previous review results immediately
     setUserStats([]);
+    setAgentStats([]); // <-- Clear agent stats on project change
     // Data fetching will be triggered by the useEffect hook above
   };
 
@@ -381,6 +492,41 @@ export default function ReviewInterface() {
                    )}
                 </section>
 
+                {/* === NEW: Agent Stats Section === */}
+                <section className="mb-8 border-t pt-6">
+                   <h2 className="text-xl font-semibold mb-4">AI Agent Decision Summary: {selectedProjectName}</h2>
+                   {agentStats.length > 0 ? (
+                     <div className="space-y-4">
+                       {agentStats.map(stats => (
+                         <Card key={stats.agentId}>
+                            <CardHeader className="pb-2">
+                               <CardTitle className="text-lg">{stats.agentName}</CardTitle>
+                               <CardDescription>Total Screened: {stats.totalScreened}</CardDescription>
+                             </CardHeader>
+                             <CardContent>
+                                <div className="grid grid-cols-3 gap-4 text-center pt-4">
+                                    <div>
+                                        <p className="text-xs text-muted-foreground">Included</p>
+                                        <p className="text-2xl font-bold text-green-700">{stats.includeCount}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-xs text-muted-foreground">Maybe</p>
+                                        <p className="text-2xl font-bold text-yellow-700">{stats.maybeCount}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-xs text-muted-foreground">Excluded</p>
+                                        <p className="text-2xl font-bold text-red-700">{stats.excludeCount}</p>
+                                    </div>
+                                </div>
+                             </CardContent>
+                         </Card>
+                       ))}
+                     </div>
+                   ) : (
+                     <p className="text-center text-muted-foreground">No screening decisions found for AI agents in this project yet.</p>
+                   )}
+                </section>
+
                 {/* === Conflicts Section === */}
                 <section className="mt-8 border-t pt-6">
                    <h2 className="text-xl font-semibold mb-4">Conflicts: {selectedProjectName}</h2>
@@ -399,18 +545,30 @@ export default function ReviewInterface() {
                             <CardContent>
                                <h4 className="text-sm font-semibold mb-2">Decisions:</h4>
                                <ul className="list-disc pl-5 space-y-1 text-sm">
-                                 {article.decisions.map(decision => (
-                                   <li key={decision.user_id}>
-                                     <span className="font-medium">{decision.user_email || 'Unknown User'}:</span>
-                                     <span className={`ml-2 font-semibold ${
-                                         decision.decision === 'include' ? 'text-green-700' :
-                                         decision.decision === 'exclude' ? 'text-red-700' :
-                                         'text-yellow-700'
-                                     }`}>
-                                        {decision.decision.charAt(0).toUpperCase() + decision.decision.slice(1)}
-                                      </span>
-                                   </li>
-                                 ))}
+                                 {article.decisions.map((decision, index) => {
+                                     // Determine the display name
+                                     let displayName = 'Unknown Source'; // Default fallback
+                                     if (decision.agent_id) {
+                                         // Prioritize Agent Name
+                                         displayName = decision.agent_name || `Agent (${decision.agent_id.substring(0,6)}...)`; // Clearer fallback
+                                     } else if (decision.user_id) {
+                                         // Otherwise use User Email
+                                         displayName = decision.user_email || `User (${decision.user_id.substring(0,6)}...)`; // Clearer fallback
+                                     }
+
+                                     return (
+                                       <li key={`${decision.agent_id || decision.user_id}-${index}`}>
+                                         <span className="font-medium">{displayName}:</span>
+                                         <span className={`ml-2 font-semibold ${
+                                             decision.decision === 'include' ? 'text-green-700' :
+                                             decision.decision === 'exclude' ? 'text-red-700' :
+                                             'text-yellow-700'
+                                         }`}>
+                                            {decision.decision.charAt(0).toUpperCase() + decision.decision.slice(1)}
+                                          </span>
+                                       </li>
+                                     );
+                                 })}
                                </ul>
                                {/* Resolve Button */}
                                <div className="mt-4 text-right">
