@@ -38,6 +38,7 @@ interface ReviewArticle {
   id: string;
   pmid: string;
   title: string;
+  abstract: string;
   decisions: Decision[];
   conflict: boolean; // Flag to indicate disagreement
 }
@@ -207,9 +208,9 @@ export default function ReviewInterface() {
         console.log("Fetching ONE article details for review (TESTING)...");
         const { data: articlesData, error: articlesError } = await supabase
             .from('articles')
-            .select('id, title, abstract') // Select needed fields
-            .eq('project_id', selectedProjectId) // Ensure articles are from the correct project
-            .limit(1); // <<<--- Just try to get one article
+            .select('id, pmid, title, abstract')
+            .eq('project_id', selectedProjectId)
+            .limit(1);
          // --------------------------------------------
 
         if (articlesError) {
@@ -224,15 +225,21 @@ export default function ReviewInterface() {
              const decisions = decisionsByArticle.get(article.id) || []; // Should always have decisions here
              let conflict = false;
              if (decisions.length >= 2) {
-                 const decisionSet = new Set(decisions.map(d => d.decision));
-                 if (decisionSet.has('include') && decisionSet.has('exclude')) {
+                 const uniqueDecisions = new Set(decisions.map(d => d.decision));
+                 if (uniqueDecisions.size > 1) {
                      conflict = true;
                      currentConflictCount++;
                  }
-                 // Add other conflict rules if desired
              }
-             return { ...article, decisions, conflict };
-         });
+             return {
+                 id: article.id,
+                 pmid: article.pmid,
+                 title: article.title,
+                 abstract: article.abstract,
+                 decisions: decisions,
+                 conflict: conflict,
+             };
+        });
 
         // 6. Set State for conflicts
         setConflictingArticles(articlesForReview.filter(a => a.conflict));
