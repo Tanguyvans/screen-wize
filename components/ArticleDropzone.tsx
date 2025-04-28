@@ -4,12 +4,14 @@ import { useState, useCallback } from 'react';
 import { cn } from '@/lib/utils'; // For combining classNames
 
 interface ArticleDropzoneProps {
-  onFileRead: (content: string) => void; // Callback function with file content
-  projectId: string; // Pass the selected project ID
+  onFileRead: (content: string, projectId: string | null) => void; // <-- MODIFIED: Expect projectId
+  projectId: string | null; // <-- MODIFIED: Allow null projectId (match dashboard state)
   className?: string; // Allow passing additional styles
+  // Add disabled prop if you need to disable it like DecisionDropzone
+  disabled?: boolean;
 }
 
-export function ArticleDropzone({ onFileRead, projectId, className }: ArticleDropzoneProps) {
+export function ArticleDropzone({ onFileRead, projectId, className, disabled = false }: ArticleDropzoneProps) {
   const [isDragging, setIsDragging] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -17,6 +19,7 @@ export function ArticleDropzone({ onFileRead, projectId, className }: ArticleDro
   const handleDragEnter = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     e.stopPropagation();
+    if (disabled) return; // <-- Added check
     setIsDragging(true);
     setMessage('Drop the file here');
     setError(null);
@@ -25,6 +28,7 @@ export function ArticleDropzone({ onFileRead, projectId, className }: ArticleDro
   const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     e.stopPropagation();
+     if (disabled) return; // <-- Added check
     // Only set isDragging to false if leaving the actual dropzone, not its children
     if (e.currentTarget.contains(e.relatedTarget as Node)) {
         return;
@@ -36,12 +40,14 @@ export function ArticleDropzone({ onFileRead, projectId, className }: ArticleDro
   const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault(); // Necessary to allow dropping
     e.stopPropagation();
+     if (disabled) return; // <-- Added check
     setIsDragging(true); // Keep highlighting while dragging over
   };
 
   const handleDrop = useCallback((e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     e.stopPropagation();
+     if (disabled) return; // <-- Added check
     setIsDragging(false);
     setMessage(null);
     setError(null);
@@ -58,20 +64,13 @@ export function ArticleDropzone({ onFileRead, projectId, className }: ArticleDro
         return;
       }
 
-      // Limit file size (e.g., 5MB)
-      if (file.size > 5 * 1024 * 1024) {
-         setError('File is too large. Maximum size is 5MB.');
-         setMessage(null);
-         return;
-      }
-
       const reader = new FileReader();
 
       reader.onload = (loadEvent) => {
         const content = loadEvent.target?.result as string;
         if (content) {
           setMessage(`File "${file.name}" processed.`);
-          onFileRead(content); // Call the callback with the file content
+          onFileRead(content, projectId); // <-- MODIFIED: Pass projectId
         } else {
           setError('Could not read file content.');
         }
@@ -85,7 +84,35 @@ export function ArticleDropzone({ onFileRead, projectId, className }: ArticleDro
     } else {
          setError('No file detected in drop event.');
     }
-  }, [onFileRead]); // Include onFileRead in dependencies
+  }, [onFileRead, projectId, disabled]); // Include projectId and disabled in dependencies
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+     if (disabled) return; // <-- Added check
+    if (file) {
+       // ... (file validation: type, size) ...
+        if (!file.name.toLowerCase().endsWith('.txt')) {
+            setError('Invalid file type. Please upload a .txt file.');
+            setMessage(null);
+            e.target.value = ''; // Clear input
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = (loadEvent) => {
+            const content = loadEvent.target?.result as string;
+            if (content) {
+                setMessage(`File "${file.name}" processed.`);
+                onFileRead(content, projectId); // <-- MODIFIED: Pass projectId
+            } else { setError('Could not read file content.'); }
+        };
+        reader.onerror = () => setError('Error reading file.');
+        reader.readAsText(file);
+    }
+    // Reset input value to allow selecting the same file again
+    e.target.value = '';
+  };
+
 
   return (
     <div
@@ -95,7 +122,8 @@ export function ArticleDropzone({ onFileRead, projectId, className }: ArticleDro
       onDrop={handleDrop}
       className={cn(
         "mt-4 p-8 border-2 border-dashed rounded-lg text-center cursor-pointer transition-colors duration-200 ease-in-out",
-        isDragging ? 'border-primary bg-primary/10' : 'border-gray-300 hover:border-gray-400',
+        isDragging && !disabled ? 'border-primary bg-primary/10' : 'border-gray-300 hover:border-gray-400', // <-- Added !disabled
+        disabled && "opacity-50 cursor-not-allowed", // <-- Added disabled style
         className // Allow overriding styles
       )}
     >
@@ -104,27 +132,15 @@ export function ArticleDropzone({ onFileRead, projectId, className }: ArticleDro
           type="file"
           accept=".txt"
           className="hidden" // Hide the default input
-          id={`fileInput-${projectId}`} // Unique ID needed if multiple dropzones exist
-          onChange={(e) => {
-              const file = e.target.files?.[0];
-              if (file) {
-                  // Reuse the FileReader logic (could be extracted to a helper)
-                  const reader = new FileReader();
-                  reader.onload = (loadEvent) => { /* ... same onload logic as handleDrop ... */
-                       const content = loadEvent.target?.result as string;
-                        if (content) {
-                          setMessage(`File "${file.name}" processed.`);
-                          onFileRead(content);
-                        } else { setError('Could not read file content.'); }
-                  };
-                  reader.onerror = () => setError('Error reading file.');
-                  reader.readAsText(file);
-              }
-          }}
+          id={`fileInput-${projectId || 'default'}`} // Ensure unique ID even if projectId is null initially
+          onChange={handleFileChange}
+          disabled={disabled} // <-- Added disabled attribute
        />
-       <label htmlFor={`fileInput-${projectId}`} className="cursor-pointer">
+       <label htmlFor={`fileInput-${projectId || 'default'}`} className={cn("cursor-pointer", disabled && "cursor-not-allowed")}> {/* <-- Conditional cursor */}
            {/* Display different messages based on state */}
-          {isDragging ? (
+          {disabled ? (
+             <p className="text-muted-foreground">Processing another upload...</p> // Example disabled message
+          ) : isDragging ? (
                <p className="text-primary font-semibold">{message || 'Drop the file here'}</p>
           ) : error ? (
                <p className="text-destructive">{error}</p>
@@ -133,7 +149,8 @@ export function ArticleDropzone({ onFileRead, projectId, className }: ArticleDro
           ) : (
                <p className="text-muted-foreground">Drag & drop a .txt file here, or click to select</p>
           )}
-          <p className="text-xs text-muted-foreground mt-1">Max 5MB</p>
+          {/* --- REMOVE OR COMMENT OUT THIS LINE --- */}
+          {/* <p className="text-xs text-muted-foreground mt-1">Max 5MB</p> */}
       </label>
     </div>
   );

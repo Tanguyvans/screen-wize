@@ -200,16 +200,27 @@ export default function ReviewInterface() {
              return;
         }
 
-        const { data: relevantArticles, error: articlesError } = await supabase
-            .from('articles')
-            .select('id, pmid, title')
-            .in('id', articleIdsWithDecisions);
+        console.log('Article IDs for filtering:', articleIdsWithDecisions);
+        console.log('Number of Article IDs:', articleIdsWithDecisions.length);
 
-        if (articlesError) throw new Error(`Failed to fetch relevant project articles: ${articlesError.message}`);
+        // --- Temporarily replace the failing query ---
+        console.log("Fetching ONE article details for review (TESTING)...");
+        const { data: articlesData, error: articlesError } = await supabase
+            .from('articles')
+            .select('id, title, abstract') // Select needed fields
+            .eq('project_id', selectedProjectId) // Ensure articles are from the correct project
+            .limit(1); // <<<--- Just try to get one article
+         // --------------------------------------------
+
+        if (articlesError) {
+             console.error("Supabase articles fetch error object (TESTING):", JSON.stringify(articlesError, null, 2));
+            throw new Error(`Failed to fetch relevant project articles (TESTING): ${articlesError.message}`);
+        }
+        console.log("TESTING - Fetched article data:", articlesData) // See if this works
 
         // 5. Identify Conflicts and build final list
         let currentConflictCount = 0;
-        const articlesForReview: ReviewArticle[] = (relevantArticles || []).map(article => {
+        const articlesForReview: ReviewArticle[] = (articlesData || []).map(article => {
              const decisions = decisionsByArticle.get(article.id) || []; // Should always have decisions here
              let conflict = false;
              if (decisions.length >= 2) {

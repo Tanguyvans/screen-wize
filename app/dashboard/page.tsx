@@ -10,13 +10,16 @@ import { CreateProjectDialog } from '@/components/CreateProjectDialog'; // Impor
 import { InviteUserDialog } from '@/components/InviteUserDialog';   // Import Invite dialog
 import { Button } from '@/components/ui/button'; // Import Button
 import { ArticleDropzone } from '@/components/ArticleDropzone'; // <-- Import Dropzone
+import { DecisionDropzone, ParsedDecision } from '@/components/DecisionDropzone'; // <-- Import DecisionDropzone
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"; // For messages
-import { Loader2 } from "lucide-react"; // Import Loader2
+import { Loader2, Download, UploadCloud } from "lucide-react"; // Added Download
 import Link from 'next/link'; // <-- Import Link for navigation
 import { Progress } from "@/components/ui/progress"; // <-- Import Progress component
 import { Separator } from "@/components/ui/separator"; // <-- Import Separator
 import { Badge } from "@/components/ui/badge"; // For invitation status later if needed
 import { ReloadIcon } from "@radix-ui/react-icons"; // For loading spinners on buttons
+import { CreateAgentDialog } from '@/components/CreateAgentDialog'; // <-- Import Agent Dialog
+import { Label } from "@/components/ui/label"; // <-- Import Label for dropdown
 
 // Define the screening decision type mirroring the enum
 type ScreeningDecision = 'include' | 'exclude' | 'maybe' | 'unscreened';
@@ -65,6 +68,29 @@ type InvitationActionStatus = {
   [invitationId: string]: 'loading' | 'error' | null;
 };
 
+// Type for saving screening decisions (ensure it exists)
+interface ScreeningDecisionSaveData {
+    article_id: string;
+    user_id?: string | null; // <-- Make optional/nullable
+    agent_id?: string | null; // <-- Add optional/nullable agent_id
+    project_id: string;
+    decision: 'include' | 'exclude' | 'maybe';
+}
+
+// Interface for fetched AI Agent data
+interface AiAgent {
+    id: string;
+    name: string;
+    project_id: string;
+    // Add other fields if needed
+}
+
+// NEW: Interface for AI Agent specific screening stats
+interface AgentScreeningStats extends ScreeningStats {
+    agentId: string;
+    agentName: string;
+}
+
 export default function DashboardPage() {
   const [user, setUser] = useState<User | null>(null);
   const [projects, setProjects] = useState<Project[]>([]);
@@ -72,23 +98,45 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true); // Page loading state
   const [error, setError] = useState<string | null>(null); // Page/fetch error state
 
+  // --- Calculate selectedProject EARLY ---
+  // Find the project object based on the selected ID. Do this before hooks that might use it.
+  const selectedProject = projects.find(p => p.id === selectedProjectId);
+
   // State for file parsing and saving articles
-  const [isProcessing, setIsProcessing] = useState(false); // Combined state for parsing/saving
-  const [processingMessage, setProcessingMessage] = useState<string | null>(null);
-  const [processingError, setProcessingError] = useState<string | null>(null);
+  const [isProcessingTxt, setIsProcessingTxt] = useState(false);
+  const [processingTxtMessage, setProcessingTxtMessage] = useState<string | null>(null);
+  const [processingTxtError, setProcessingTxtError] = useState<string | null>(null);
+  const [parsedTxtArticles, setParsedTxtArticles] = useState<ArticleDetail[]>([]);
 
-  // State to hold the parsed articles before saving
-  const [parsedArticles, setParsedArticles] = useState<ArticleDetail[]>([]);
-
-  // --- State for Screening Statistics ---
+  // State for Screening Statistics
   const [screeningStats, setScreeningStats] = useState<ScreeningStats | null>(null);
-  const [loadingStats, setLoadingStats] = useState(false); // State for loading stats
+  const [loadingStats, setLoadingStats] = useState(false);
 
-  // --- State for Pending Invitations ---
+  // State for Pending Invitations
   const [pendingInvitations, setPendingInvitations] = useState<PendingInvitation[]>([]);
   const [loadingInvitations, setLoadingInvitations] = useState(false);
   const [invitationError, setInvitationError] = useState<string | null>(null);
-  const [invitationActionStatus, setInvitationActionStatus] = useState<InvitationActionStatus>({}); // To track loading/error per button
+  const [invitationActionStatus, setInvitationActionStatus] = useState<InvitationActionStatus>({});
+
+  // --- NEW State for AI Download/Upload ---
+  const [isDownloading, setIsDownloading] = useState(false);
+  const [downloadError, setDownloadError] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false); // Saving AI decisions
+  const [uploadMessage, setUploadMessage] = useState<string | null>(null);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [parsedDecisions, setParsedDecisions] = useState<ParsedDecision[]>([]);
+  const [uploadedFileName, setUploadedFileName] = useState<string | null>(null);
+
+  // --- NEW State for AI Agents ---
+  const [projectAgents, setProjectAgents] = useState<AiAgent[]>([]);
+  const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
+  const [loadingAgents, setLoadingAgents] = useState(false);
+  const [agentError, setAgentError] = useState<string | null>(null);
+
+  // --- NEW State for Agent Statistics ---
+  const [agentStats, setAgentStats] = useState<AgentScreeningStats[]>([]);
+  const [loadingAgentStats, setLoadingAgentStats] = useState(false);
+  const [agentStatsError, setAgentStatsError] = useState<string | null>(null);
 
   // --- Fetch User Projects ---
   const fetchProjects = useCallback(async (selectFirst = false) => {
@@ -390,7 +438,7 @@ export default function DashboardPage() {
 
         if (event === 'SIGNED_OUT') {
            // Clear everything on sign out
-           setError(null); setProjects([]); setSelectedProjectId(null); setParsedArticles([]); setScreeningStats(null); setPendingInvitations([]); setInvitationError(null);
+           setError(null); setProjects([]); setSelectedProjectId(null); setParsedTxtArticles([]); setScreeningStats(null); setPendingInvitations([]); setInvitationError(null); setParsedDecisions([]);
         } else if (event === 'SIGNED_IN' && currentUser && currentEmail) {
            // Refetch projects and invitations on sign in
            fetchProjects(true);
@@ -417,9 +465,14 @@ export default function DashboardPage() {
   const handleProjectSelect = (projectId: string) => {
     console.log("Project selected:", projectId);
     setSelectedProjectId(projectId);
-    // Clear file processing state and parsed articles
-    setProcessingMessage(null); setProcessingError(null); setIsProcessing(false); setParsedArticles([]);
+    // Clear file processing state and parsed articles/decisions
+    setProcessingTxtMessage(null); setProcessingTxtError(null); setIsProcessingTxt(false); setParsedTxtArticles([]);
+    setUploadMessage(null); setUploadError(null); setIsUploading(false); setParsedDecisions([]); setUploadedFileName(null);
+    setDownloadError(null); // Clear download error too
     // Stats will be cleared/refetched by the useEffect hook above
+    setProjectAgents([]);
+    setSelectedAgentId(null);
+    setAgentError(null);
   };
 
   // --- Refresh Projects List After Creation ---
@@ -428,123 +481,432 @@ export default function DashboardPage() {
       fetchProjects(false); // Refetch projects, don't force selection change
   };
 
-  // --- Handle File Content Parsing ---
-  const handleFileContent = useCallback((content: string, projectId: string | null) => {
+  // --- Handle TXT File Content Parsing ---
+  const handleTxtFileContent = useCallback((content: string, projectId: string | null) => {
       if (!projectId) { /* ... handle error ... */ return; }
-      setIsProcessing(true);
-      setProcessingMessage("Parsing file content...");
-      setProcessingError(null);
-      setParsedArticles([]); // Clear previous results
+      setIsProcessingTxt(true);
+      setProcessingTxtMessage("Parsing articles...");
+      setProcessingTxtError(null);
+      setParsedTxtArticles([]); // Clear previous results
 
       try {
-          // ... (Parsing logic remains the same as previous version) ...
           const articlesFromFile: ArticleDetail[] = [];
           const records = content.split(/^\s*PMID-/gm).filter(record => record.trim().length > 0);
 
-          if (records.length === 0) { throw new Error("Could not find any article records starting with PMID- in the file."); }
-          setProcessingMessage(`Found ${records.length} potential article records. Parsing...`);
+          if (records.length === 0) { throw new Error("No records starting with PMID- found."); }
+          setProcessingTxtMessage(`Found ${records.length} records. Parsing...`);
 
-          records.forEach((recordText, index) => {
+          records.forEach((recordText) => {
               const fullRecordText = "PMID-" + recordText;
               const lines = fullRecordText.split('\n');
-              let currentPmid = '', currentTitle = '', currentAbstract = '', isParsingTitle = false, isParsingAbstract = false;
+              let pmid = '', title = '', abstract = '', isTI = false, isAB = false;
 
               lines.forEach(line => {
-                  if (line.startsWith('PMID-')) { currentPmid = line.substring(6).trim(); isParsingTitle = false; isParsingAbstract = false; }
-                  else if (line.startsWith('TI  -')) { currentTitle = line.substring(6).trim(); isParsingTitle = true; isParsingAbstract = false; }
-                  else if (line.startsWith('AB  -')) { currentAbstract = line.substring(6).trim(); isParsingAbstract = true; isParsingTitle = false; }
-                  else if (isParsingTitle && line.startsWith('      ')) { currentTitle += ' ' + line.trim(); }
-                  else if (isParsingAbstract && line.startsWith('      ')) { currentAbstract += ' ' + line.trim(); }
-                  else if (line.trim().length > 0 && !line.startsWith('      ')) { isParsingTitle = false; isParsingAbstract = false; }
+                  if (line.startsWith('PMID-')) { pmid = line.substring(6).trim(); isTI=false; isAB=false; }
+                  else if (line.startsWith('TI  -')) { title = line.substring(6).trim(); isTI=true; isAB=false; }
+                  else if (line.startsWith('AB  -')) { abstract = line.substring(6).trim(); isAB=true; isTI=false; }
+                  else if (isTI && line.startsWith('      ')) { title += ' ' + line.trim(); }
+                  else if (isAB && line.startsWith('      ')) { abstract += ' ' + line.trim(); }
+                  else if (line.trim().length > 0 && !line.startsWith('      ')) { isTI=false; isAB=false; }
               });
 
-              if (currentPmid) {
-                  articlesFromFile.push({ pmid: currentPmid, title: currentTitle || 'Title Not Found', abstract: currentAbstract || 'Abstract Not Found' });
-              } else { console.warn(`Record ${index + 1} skipped, could not find PMID.`); }
+              if (pmid) {
+                  articlesFromFile.push({ pmid, title: title || 'N/A', abstract: abstract || 'N/A' });
+              } else { console.warn(`Record skipped, could not find PMID.`); }
           });
 
-          if (articlesFromFile.length === 0) { throw new Error("Parsing complete, but no articles with PMIDs were extracted."); }
+          if (articlesFromFile.length === 0) { throw new Error("No articles with PMIDs extracted."); }
 
-          setParsedArticles(articlesFromFile);
-          setProcessingMessage(`Successfully parsed ${articlesFromFile.length} articles from the file. Click 'Save Articles' to add them to the project.`);
+          setParsedTxtArticles(articlesFromFile);
+          setProcessingTxtMessage(`Parsed ${articlesFromFile.length} articles. Click 'Save Articles'.`);
 
       } catch (err: any) {
-          console.error("Error processing file:", err);
-          setProcessingError(err.message || "An unknown error occurred during file parsing.");
-          setProcessingMessage(null);
+          console.error("Error parsing TXT:", err);
+          setProcessingTxtError(err.message);
+          setProcessingTxtMessage(null);
       } finally {
-          setIsProcessing(false);
+          setIsProcessingTxt(false);
       }
-  }, []); // End of handleFileContent
+  }, []);
 
-
-  // --- Save Parsed Articles to Supabase ---
-  const handleSaveArticles = useCallback(async () => {
-      if (!selectedProjectId || parsedArticles.length === 0) {
-          alert("No project selected or no articles parsed to save.");
-          return;
-      }
-
-      console.log(`Attempting to save ${parsedArticles.length} parsed articles to project ${selectedProjectId}...`);
-      setIsProcessing(true);
-      setProcessingMessage("Saving articles to database...");
-      setProcessingError(null);
-
-      // Prepare data for Supabase insert/upsert
-      const articlesToSave: ArticleSaveData[] = parsedArticles.map(article => ({
-          project_id: selectedProjectId,
-          pmid: article.pmid,
-          title: article.title,
-          abstract: article.abstract,
-      }));
-
-      // ... (Batching and Upsert logic remains the same as previous version) ...
+  // --- Save Parsed TXT Articles to Supabase ---
+  const handleSaveTxtArticles = useCallback(async () => {
+      if (!selectedProjectId || parsedTxtArticles.length === 0) { return; }
+      console.log(`Saving ${parsedTxtArticles.length} articles to project ${selectedProjectId}...`);
+      setIsProcessingTxt(true);
+      setProcessingTxtMessage("Saving to DB...");
+      setProcessingTxtError(null);
+      const articlesToSave: ArticleSaveData[] = parsedTxtArticles.map(a => ({ project_id: selectedProjectId, pmid: a.pmid, title: a.title, abstract: a.abstract }));
       const BATCH_SIZE = 500;
-      let savedCount = 0; let errorCount = 0;
+      let saved = 0;
+      let errorOccurred = false;
 
       try {
           for (let i = 0; i < articlesToSave.length; i += BATCH_SIZE) {
               const batch = articlesToSave.slice(i, i + BATCH_SIZE);
-              setProcessingMessage(`Saving batch ${Math.floor(i / BATCH_SIZE) + 1}... (${i + batch.length}/${articlesToSave.length})`); // Update message
-
-              const { error: saveError } = await supabase
-                  .from('articles')
-                  .upsert(batch, { onConflict: 'project_id, pmid', ignoreDuplicates: true });
-
+              setProcessingTxtMessage(`Saving batch ${Math.floor(i / BATCH_SIZE) + 1}... (${i + batch.length}/${articlesToSave.length})`);
+              const { error: saveError } = await supabase.from('articles').upsert(batch, { onConflict: 'project_id, pmid', ignoreDuplicates: true });
               if (saveError) {
-                  console.error(`Error saving batch starting at index ${i}:`, saveError);
-                  errorCount += batch.length;
-                  setProcessingError(`Error saving articles: ${saveError.message}. Some may not have been saved.`);
-                  // break; // Optional: stop on first error
+                  console.error(`Batch save error (index ${i}):`, saveError);
+                  errorOccurred = true;
+                  setProcessingTxtError(`Save error: ${saveError.message}`);
               } else {
-                  savedCount += batch.length;
+                  saved += batch.length;
               }
           }
-
-          if (errorCount === 0) {
-             setProcessingMessage(`Successfully saved/updated ${savedCount} articles to the project.`);
-             setParsedArticles([]); // Clear the parsed list after successful save
-             await fetchScreeningStats(selectedProjectId, user?.id ?? null);
-          } else {
-              setProcessingMessage(`Finished saving. Processed ${savedCount} articles, but encountered errors for ${errorCount}. Some may need re-importing.`);
+          if (!errorOccurred) {
+              setProcessingTxtMessage(`Successfully saved ${saved} articles.`);
+              setParsedTxtArticles([]);
               await fetchScreeningStats(selectedProjectId, user?.id ?? null);
+          } else {
+              setProcessingTxtMessage(`Finished with errors. Saved ${saved} before error.`);
           }
-           // TODO: Trigger a refresh of the *displayed* article list from DB if showing DB articles
-
       } catch (err: any) {
           console.error("Error saving articles:", err);
-          setProcessingError(err.message || "An unknown error occurred while saving.");
-          setProcessingMessage(null);
+          setProcessingTxtError(err.message);
+          setProcessingTxtMessage(null);
       } finally {
-          setIsProcessing(false);
+          setIsProcessingTxt(false);
       }
-  }, [parsedArticles, selectedProjectId, fetchScreeningStats, user?.id]); // Keep user?.id in dependencies
+  }, [parsedTxtArticles, selectedProjectId, fetchScreeningStats, user?.id]);
+
+  // --- NEW: Download Articles for AI (with Batching) ---
+  const handleDownloadArticles = useCallback(async () => {
+      if (!selectedProjectId) { setDownloadError("Please select a project first."); return; }
+      setIsDownloading(true);
+      setDownloadError(null);
+      console.log(`Downloading ALL articles for AI, project: ${selectedProjectId}`);
+
+      const BATCH_DOWNLOAD_SIZE = 1000; // Fetch 1000 at a time (Supabase default limit)
+      let allArticles: { id: string; title: string | null; abstract: string | null }[] = [];
+      let currentOffset = 0;
+      let fetchMore = true;
+
+      // We need the project name for the filename, recalculate inside if needed, or depend on 'projects' state
+      const currentSelectedProject = projects.find(p => p.id === selectedProjectId);
+
+      try {
+          while (fetchMore) {
+              console.log(`Fetching articles from offset ${currentOffset}...`);
+              const { data: batchArticles, error: fetchError } = await supabase
+                  .from('articles')
+                  .select('id, title, abstract')
+                  .eq('project_id', selectedProjectId)
+                  .range(currentOffset, currentOffset + BATCH_DOWNLOAD_SIZE - 1); // Fetch in batches
+
+              if (fetchError) throw fetchError;
+
+              if (batchArticles && batchArticles.length > 0) {
+                  allArticles = allArticles.concat(batchArticles);
+                  currentOffset += batchArticles.length;
+                  // If we fetched less than the batch size, we've reached the end
+                  if (batchArticles.length < BATCH_DOWNLOAD_SIZE) {
+                      fetchMore = false;
+                  }
+              } else {
+                  // No more articles found
+                  fetchMore = false;
+              }
+          } // End while loop
+
+          if (allArticles.length === 0) throw new Error("No articles found in this project to download.");
+
+          console.log(`Total articles fetched for download: ${allArticles.length}`);
+
+          // Format data (using the complete 'allArticles' array)
+          let fileContent = "";
+          allArticles.forEach((article, index) => {
+              fileContent += `ID: ${article.id}\n`;
+              fileContent += `TI: ${article.title || 'N/A'}\n`;
+              fileContent += `AB: ${article.abstract || 'N/A'}\n`;
+              if (index < allArticles.length - 1) {
+                  fileContent += "---\n";
+              }
+          });
+
+          // Create blob and trigger download (same as before)
+          const blob = new Blob([fileContent], { type: 'text/plain;charset=utf-8' });
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = `project_${currentSelectedProject?.name || selectedProjectId}_articles.txt`;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          URL.revokeObjectURL(url);
+
+          console.log("Article data download initiated for all articles.");
+
+      } catch (err: any) {
+          console.error("Error downloading articles:", err);
+          setDownloadError(`Download failed: ${err.message}`);
+      } finally {
+          setIsDownloading(false);
+      }
+  }, [selectedProjectId, projects]);
+
+  // --- NEW: Handle Parsed AI Decisions ---
+  const handleAiDecisionsParsed = useCallback((decisions: ParsedDecision[], fileName: string) => {
+      console.log(`Received ${decisions.length} parsed decisions from file: ${fileName}`);
+      setParsedDecisions(decisions);
+      setUploadedFileName(fileName);
+      setUploadError(null); // Clear previous upload errors
+      setUploadMessage(null); // Clear previous upload messages
+      if (decisions.length > 0) {
+          setUploadMessage(`${decisions.length} decisions parsed from ${fileName}. Ready to save.`);
+      }
+  }, []);
+
+  // --- NEW: Fetch Statistics for All AI Agents in Project (with Batching for Decisions) ---
+  const fetchAgentStats = useCallback(async (projectId: string | null) => {
+    if (!projectId) {
+        setAgentStats([]); // Clear stats if no project selected
+        return;
+    }
+    console.log(`Fetching stats for all AI agents in project ${projectId}...`);
+    setLoadingAgentStats(true);
+    setAgentStatsError(null);
+    setAgentStats([]); // Clear previous stats
+
+    try {
+        // 1. Fetch total article count for the project
+        const { count: totalCount, error: totalError } = await supabase
+            .from('articles')
+            .select('*', { count: 'exact', head: true })
+            .eq('project_id', projectId);
+
+        if (totalError) throw new Error(`Failed to get total article count: ${totalError.message}`);
+        const totalArticles = totalCount ?? 0;
+
+        // 2. Fetch all AI agents for the project
+        const { data: agents, error: agentsError } = await supabase
+            .from('ai_agents')
+            .select('id, name')
+            .eq('project_id', projectId);
+
+        if (agentsError) throw new Error(`Failed to fetch AI agents: ${agentsError.message}`);
+        if (!agents || agents.length === 0) {
+            console.log("No AI agents found for this project.");
+            setAgentStats([]);
+            setLoadingAgentStats(false);
+            return;
+        }
+
+        // 3. Fetch ALL decisions made by ANY agent for this project (IN BATCHES)
+        let allAgentDecisions: { agent_id: string | null; decision: string }[] = [];
+        let currentOffset = 0;
+        const BATCH_DECISION_SIZE = 1000; // Supabase limit
+        let fetchMore = true;
+
+        console.log("Fetching all agent decisions in batches...");
+        while (fetchMore) {
+            const { data: batchDecisions, error: decisionError } = await supabase
+                .from('screening_decisions')
+                .select('agent_id, decision')
+                .eq('project_id', projectId)
+                .not('agent_id', 'is', null)
+                .in('decision', ['include', 'exclude', 'maybe'])
+                .range(currentOffset, currentOffset + BATCH_DECISION_SIZE - 1); // Fetch in batches
+
+            if (decisionError) throw new Error(`Failed to get agent decisions batch: ${decisionError.message}`);
+
+            if (batchDecisions && batchDecisions.length > 0) {
+                allAgentDecisions = allAgentDecisions.concat(batchDecisions as { agent_id: string | null; decision: string }[]); // Add type assertion
+                currentOffset += batchDecisions.length;
+                if (batchDecisions.length < BATCH_DECISION_SIZE) {
+                    fetchMore = false; // Reached the end
+                }
+            } else {
+                fetchMore = false; // No more decisions found
+            }
+        }
+        console.log(`Total agent decisions fetched: ${allAgentDecisions.length}`);
+
+
+        // 4. Process the decisions and aggregate stats per agent (using allAgentDecisions)
+        const statsMap = new Map<string, AgentScreeningStats>();
+
+        // Initialize stats map for each agent found
+        agents.forEach(agent => {
+            statsMap.set(agent.id, {
+                agentId: agent.id,
+                agentName: agent.name,
+                totalArticles: totalArticles,
+                userScreenedCount: 0,
+                includeCount: 0,
+                excludeCount: 0,
+                maybeCount: 0,
+            });
+        });
+
+        // Aggregate counts from fetched decisions
+        allAgentDecisions.forEach(item => { // Iterate over the complete list
+            if (item.agent_id) {
+                const agentStat = statsMap.get(item.agent_id);
+                if (agentStat) {
+                    if (item.decision === 'include') agentStat.includeCount++;
+                    else if (item.decision === 'exclude') agentStat.excludeCount++;
+                    else if (item.decision === 'maybe') agentStat.maybeCount++;
+                    agentStat.userScreenedCount = agentStat.includeCount + agentStat.excludeCount + agentStat.maybeCount;
+                } else {
+                     console.warn(`Found decision for unknown agent_id: ${item.agent_id}`);
+                }
+            }
+        });
+
+        // Convert map values to array and set state
+        const calculatedStats = Array.from(statsMap.values());
+        setAgentStats(calculatedStats);
+        console.log("Agent stats calculated (full):", calculatedStats);
+
+    } catch (err: any) {
+        console.error("Error fetching agent stats:", err);
+        setAgentStatsError(`Failed to load agent stats: ${err.message}`);
+        setAgentStats([]);
+    } finally {
+        setLoadingAgentStats(false);
+    }
+  }, []); // Depends only on supabase client
+
+  // --- NEW: Save Parsed AI Decisions to Supabase (Restored Batch Logic) ---
+  const handleSaveAiDecisions = useCallback(async () => {
+      // Use the selected AI agent ID from state
+      if (!selectedProjectId || !selectedAgentId || parsedDecisions.length === 0) {
+          setUploadError("Project, AI Agent must be selected, and decisions must be parsed.");
+          return;
+      }
+
+      const agentNameToLog = projectAgents.find(a => a.id === selectedAgentId)?.name || selectedAgentId;
+      console.log(`Saving ${parsedDecisions.length} AI decisions for agent '${agentNameToLog}' (${selectedAgentId}) to project ${selectedProjectId}...`);
+      setIsUploading(true);
+      setUploadMessage(`Saving ${parsedDecisions.length} decisions...`);
+      setUploadError(null);
+
+      // Prepare data using the selectedAgentId for the new agent_id column
+      const decisionsToSave: ScreeningDecisionSaveData[] = parsedDecisions.map(d => ({
+          project_id: selectedProjectId,
+          article_id: d.article_id,
+          user_id: null, // <-- Explicitly set user_id to null for AI decisions
+          agent_id: selectedAgentId, // <-- Use selected agent ID for agent_id
+          decision: d.decision,
+      }));
+
+      const BATCH_SIZE = 500; // Process in batches
+      let savedCount = 0;
+      let errorOccurred = false;
+      let batchErrors: string[] = [];
+
+      try {
+          // --- Restore the loop to process in batches ---
+          for (let i = 0; i < decisionsToSave.length; i += BATCH_SIZE) {
+              const batch = decisionsToSave.slice(i, i + BATCH_SIZE); // Get the current batch
+              const batchNumber = Math.floor(i / BATCH_SIZE) + 1;
+              setUploadMessage(`Saving decision batch ${batchNumber}...`);
+
+              // Using simple insert for safety
+               const { error: saveError } = await supabase
+                  .from('screening_decisions')
+                  .insert(batch); // <-- Insert the batch
+
+              if (saveError) {
+                  console.error(`Error saving decision batch ${batchNumber} (index ${i}):`, saveError);
+                  let specificErrorMsg = saveError.message;
+
+                  // Check for specific FK violation on article_id
+                  if (saveError.code === '23503' && saveError.message.includes('screening_decisions_article_id_fkey')) {
+                      specificErrorMsg = `Batch ${batchNumber}: Article ID not found in the project's articles table. Ensure articles were imported correctly first. (Details: ${saveError.message})`;
+                  } else {
+                     specificErrorMsg = `Batch ${batchNumber}: ${saveError.message}`;
+                  }
+
+                  batchErrors.push(specificErrorMsg);
+                  errorOccurred = true; // Mark error but continue trying other batches
+              } else {
+                  savedCount += batch.length; // Count successful saves from the batch
+              }
+          } // --- End of loop ---
+
+          if (!errorOccurred) {
+              setUploadMessage(`Successfully saved ${savedCount} decisions for agent ${agentNameToLog}.`);
+              setParsedDecisions([]); // Clear the list on full success
+              setUploadedFileName(null); // Clear file name on full success
+              // Refresh agent stats after successful upload
+              await fetchAgentStats(selectedProjectId);
+          } else {
+              const errorSummary = batchErrors.join('; ');
+              setUploadError(`Finished with errors saving for agent ${agentNameToLog}. ${savedCount} decisions may have been saved. Errors: ${errorSummary}`);
+              setUploadMessage(null);
+              // Keep parsedDecisions so user might be able to inspect/retry if desired
+          }
+
+      } catch (err: any) {
+          console.error(`Unhandled error saving AI decisions for agent ${agentNameToLog}:`, err);
+          setUploadError(err.message || "An unknown error occurred while saving AI decisions.");
+          setUploadMessage(null);
+      } finally {
+          setIsUploading(false);
+      }
+  // Ensure all dependencies are listed
+  }, [parsedDecisions, selectedProjectId, selectedAgentId, projectAgents, fetchScreeningStats, fetchAgentStats]);
+
+  // --- NEW: Fetch AI Agents for Project ---
+  const fetchProjectAgents = useCallback(async (projectId: string | null) => {
+      if (!projectId) {
+          setProjectAgents([]);
+          setSelectedAgentId(null); // Clear selection if project changes
+          return;
+      }
+      console.log(`Fetching AI agents for project ${projectId}...`);
+      setLoadingAgents(true);
+      setAgentError(null);
+      try {
+          const { data, error } = await supabase
+              .from('ai_agents')
+              .select('id, name, project_id') // Select necessary fields
+              .eq('project_id', projectId)
+              .order('name', { ascending: true }); // Order alphabetically
+
+          if (error) throw error;
+
+          setProjectAgents(data || []);
+          // Reset agent selection when agents are refetched for a project
+          // You could optionally try to keep selection if the agent still exists
+          setSelectedAgentId(null);
+          console.log("Fetched AI agents:", data);
+
+      } catch (err: any) {
+          console.error("Error fetching AI agents:", err);
+          setAgentError(`Failed to load AI agents: ${err.message}`);
+          setProjectAgents([]);
+          setSelectedAgentId(null);
+      } finally {
+          setLoadingAgents(false);
+      }
+  }, []); // Depends only on supabase client
+
+  // --- NEW: Fetch AI Agents when Project Changes ---
+  useEffect(() => {
+      fetchProjectAgents(selectedProjectId);
+  }, [selectedProjectId, fetchProjectAgents]);
+
+  // --- Fetch AI Agents when Project Changes (existing) ---
+  useEffect(() => {
+      fetchProjectAgents(selectedProjectId);
+      // Also fetch agent stats when project changes
+      fetchAgentStats(selectedProjectId);
+  }, [selectedProjectId, fetchProjectAgents, fetchAgentStats]);
+
+  // --- Refresh AI Agents List After Creation (update to also refresh stats) ---
+  const refreshAgents = () => {
+      console.log("Refreshing AI agents list and stats...");
+      fetchProjectAgents(selectedProjectId); // Refetch agents
+      fetchAgentStats(selectedProjectId);  // Refetch agent stats
+  };
 
   // --- Render Logic ---
   if (loading) { return <div className="container mx-auto px-4 py-8 text-center">Loading dashboard...</div>; }
   if (!user) { return <div className="container mx-auto px-4 py-8 text-center">Redirecting to login...</div>; }
 
-  const selectedProject = projects.find(p => p.id === selectedProjectId);
   // Calculate progress percentage
   const progressPercent = screeningStats && screeningStats.totalArticles > 0
     ? Math.round((screeningStats.userScreenedCount / screeningStats.totalArticles) * 100)
@@ -633,150 +995,221 @@ export default function DashboardPage() {
       {/* --- Conditional Content Area --- */}
       <div className="mt-6 p-6 border border-gray-300 rounded-lg min-h-[300px]">
          {selectedProjectId ? (
-           <div>
+           <div className="space-y-8">
               <h2 className="text-xl font-semibold mb-4 text-center">
                  Project: {selectedProject?.name ?? 'Loading...'}
               </h2>
 
-              {/* --- File Import Section --- */}
-              <Card className="mb-6 bg-secondary/30">
-                  <CardHeader><CardTitle className="text-lg">Import Articles (.txt)</CardTitle></CardHeader>
-                  <CardContent>
-                      <ArticleDropzone
-                          projectId={selectedProjectId}
-                          onFileRead={(content) => handleFileContent(content, selectedProjectId)}
-                          className={isProcessing ? 'opacity-75 cursor-default' : ''}
-                          />
-                      {/* Display Processing Messages */}
-                      {isProcessing && !processingMessage && !processingError && ( // Initial processing message
-                          <Alert variant="default" className="mt-4"><AlertDescription>Processing file...</AlertDescription></Alert>
-                      )}
-                      {processingMessage && !processingError && (
-                           <Alert variant={processingMessage.includes("Successfully") ? "default" : "default"} className="mt-4">
-                               <AlertDescription>{processingMessage}</AlertDescription>
-                           </Alert>
-                      )}
-                      {processingError && (
-                           <Alert variant="destructive" className="mt-4">
-                               <AlertTitle>Error</AlertTitle>
-                               <AlertDescription>{processingError}</AlertDescription>
-                           </Alert>
-                      )}
-                  </CardContent>
-              </Card>
+              {/* --- TXT File Import Section (Existing) --- */}
+              <section>
+                <Card className="bg-secondary/30">
+                    <CardHeader><CardTitle className="text-lg">Import Articles (PMID Format TXT)</CardTitle></CardHeader>
+                    <CardContent>
+                        <ArticleDropzone
+                            projectId={selectedProjectId}
+                            onFileRead={handleTxtFileContent}
+                            className={isProcessingTxt ? 'opacity-75 cursor-default' : ''}
+                            disabled={isProcessingTxt}
+                            />
+                        {/* Display Processing Messages */}
+                        {isProcessingTxt && !processingTxtMessage && !processingTxtError && ( <Alert variant="default" className="mt-4"><AlertDescription>Processing file...</AlertDescription></Alert> )}
+                        {processingTxtMessage && !processingTxtError && ( <Alert variant={"default"} className="mt-4"><AlertDescription>{processingTxtMessage}</AlertDescription></Alert> )}
+                        {processingTxtError && ( <Alert variant="destructive" className="mt-4"><AlertTitle>Error</AlertTitle><AlertDescription>{processingTxtError}</AlertDescription></Alert> )}
+                    </CardContent>
+                </Card>
+                {/* Parsed TXT Articles Preview & Save */}
+                {parsedTxtArticles.length > 0 && (
+                    <div className="mt-4">
+                        <div className="flex justify-between items-center mb-2">
+                            <h3 className="text-md font-semibold">Parsed Articles Preview ({parsedTxtArticles.length})</h3>
+                            {!isProcessingTxt && ( <Button onClick={handleSaveTxtArticles} size="sm"> Save Articles to Project </Button> )}
+                            {isProcessingTxt && processingTxtMessage?.startsWith("Saving") && ( <Button size="sm" disabled><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Saving... </Button> )}
+                        </div>
+                        <div className="space-y-2 max-h-[200px] overflow-y-auto pr-2 border rounded p-2">
+                            {parsedTxtArticles.map((a, i) => ( <div key={i} className="text-xs p-1 bg-muted/40 rounded truncate"><strong>{a.pmid}:</strong> {a.title}</div> ))}
+                        </div>
+                    </div>
+                )}
+              </section>
 
-              {/* --- Parsed/Saved Articles Area --- */}
-              <div className="flex justify-between items-center mb-3">
-                  <h3 className="text-lg font-semibold">Parsed Articles Preview ({parsedArticles.length})</h3>
-                  {/* Save Button */}
-                  {parsedArticles.length > 0 && !isProcessing && (
-                       <Button onClick={handleSaveArticles} size="sm">
-                           Save Articles to Project
-                       </Button>
-                   )}
-                     {isProcessing && processingMessage?.startsWith("Saving") && (
-                        <Button size="sm" disabled>
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Saving...
-                         </Button>
-                    )}
-              </div>
+              <Separator />
 
-              <div className="mt-4 space-y-3 max-h-[250px] overflow-y-auto pr-2 border rounded p-2 mb-6">
-                  {parsedArticles.length > 0 ? (
-                      parsedArticles.map((article, index) => (
-                          <Card key={`${article.pmid}-${index}`} className="overflow-hidden">
-                              <CardHeader className="p-3 bg-muted/50"><CardTitle className="text-base">{article.title}</CardTitle><p className="text-xs text-muted-foreground">PMID: {article.pmid}</p></CardHeader>
-                              <CardContent className="p-3 text-sm"><p className="line-clamp-3">{article.abstract}</p></CardContent>
-                          </Card>
-                      ))
-                  ) : (
-                      <div className="p-4 border border-dashed border-gray-300 rounded-lg min-h-[100px] flex items-center justify-center">
-                          <p className="text-center text-muted-foreground">
-                              (Drop a file with PMIDs, Titles, Abstracts to see results here)
-                          </p>
-                      </div>
+              {/* --- MODIFIED AI Screening Data Section --- */}
+              <section>
+                  <CardHeader className='px-0'>
+                     <CardTitle className="text-lg flex items-center justify-between">
+                        <span>AI Agent Screening Data</span>
+                         {/* Agent Management Buttons */}
+                         <div className="flex items-center gap-2">
+                             <CreateAgentDialog
+                                projectId={selectedProjectId}
+                                user={user}
+                                onAgentCreated={refreshAgents} // Pass the refresh callback
+                              />
+                             {/* Optional: Add button to view/edit agents */}
+                             <Button variant="outline" size="sm" onClick={handleDownloadArticles} disabled={isDownloading || !selectedProjectId}>
+                                 {isDownloading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
+                                 Download Articles for AI
+                             </Button>
+                         </div>
+                     </CardTitle>
+                     <p className="text-sm text-muted-foreground pt-1">
+                        Upload screening decisions made by a defined AI agent for this project.
+                     </p>
+                 </CardHeader>
+                 {downloadError && <Alert variant="destructive" className="mb-4"><AlertDescription>{downloadError}</AlertDescription></Alert>}
+                 {agentError && <Alert variant="destructive" className="mb-4"><AlertTitle>Agent Error</AlertTitle><AlertDescription>{agentError}</AlertDescription></Alert>}
+
+                 {/* --- NEW: AI Agent Selection Dropdown --- */}
+                 <div className="mb-4 grid w-full max-w-sm items-center gap-1.5">
+                    <Label htmlFor="ai-agent-select">Select AI Agent for Upload</Label>
+                     {loadingAgents ? (
+                         <div className="flex items-center text-sm text-muted-foreground"><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading agents...</div>
+                     ) : projectAgents.length > 0 ? (
+                         <Select
+                             value={selectedAgentId ?? ''}
+                             onValueChange={(value) => setSelectedAgentId(value || null)}
+                             disabled={isUploading} // Disable while uploading decisions
+                         >
+                             <SelectTrigger id="ai-agent-select">
+                                 <SelectValue placeholder="Select an agent..." />
+                             </SelectTrigger>
+                             <SelectContent>
+                                 {projectAgents.map((agent) => (
+                                     <SelectItem key={agent.id} value={agent.id}>
+                                         {agent.name}
+                                     </SelectItem>
+                                 ))}
+                             </SelectContent>
+                         </Select>
+                     ) : (
+                         <p className="text-sm text-muted-foreground">No AI agents created for this project yet. Use "Create AI Agent".</p>
+                     )}
+                 </div>
+
+                 {/* AI Decision Upload Dropzone (existing) */}
+                  <DecisionDropzone
+                      projectId={selectedProjectId}
+                      onDecisionsParsed={handleAiDecisionsParsed}
+                      // Disable if no agent is selected OR if currently uploading
+                      disabled={isUploading || !selectedAgentId || loadingAgents}
+                      className={(!selectedAgentId || loadingAgents) ? 'opacity-60' : ''}
+                  />
+                  {/* Add tooltip or text indicating agent must be selected */}
+                  {!selectedAgentId && !loadingAgents && projectAgents.length > 0 && (
+                      <p className="text-xs text-muted-foreground mt-1">Please select an AI agent above before uploading.</p>
                   )}
-              </div>
+
+                  {/* Display Upload Processing Messages (existing) */}
+                  {(uploadMessage || uploadError) && (
+                       <Alert variant={uploadError ? "destructive" : "default"} className="mt-4">
+                            {uploadError && <AlertTitle>Upload Error</AlertTitle>}
+                            <AlertDescription>{uploadError || uploadMessage}</AlertDescription>
+                       </Alert>
+                   )}
+
+                   {/* Save AI Decisions Button (disable if no agent selected) */}
+                   {parsedDecisions.length > 0 && !isUploading && (
+                        <div className="mt-4 text-right">
+                             <Button onClick={handleSaveAiDecisions} disabled={isUploading || !selectedAgentId}>
+                                 Save {parsedDecisions.length} Decisions for Agent {/* Add agent name here if desired */}
+                             </Button>
+                         </div>
+                     )}
+                     {isUploading && (
+                         <div className="mt-4 text-right">
+                              <Button disabled>
+                                 <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Saving Decisions...
+                              </Button>
+                          </div>
+                      )}
+              </section>
+
+              <Separator />
+
+              {/* --- NEW: AI Agents Screening Progress Section --- */}
+              <section>
+                  <h3 className="text-lg font-semibold mb-4">
+                      AI Agents Screening Progress
+                  </h3>
+                  {loadingAgentStats ? (
+                      <div className="flex justify-center py-8"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>
+                  ) : agentStatsError ? (
+                      <Alert variant="destructive"><AlertTitle>Error Loading Agent Stats</AlertTitle><AlertDescription>{agentStatsError}</AlertDescription></Alert>
+                  ) : agentStats.length > 0 ? (
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                          {agentStats.map((stats) => {
+                              const agentProgress = stats.totalArticles > 0
+                                  ? Math.round((stats.userScreenedCount / stats.totalArticles) * 100)
+                                  : 0;
+                              return (
+                                  <Card key={stats.agentId} className="flex flex-col">
+                                      <CardHeader className="pb-2">
+                                          <CardTitle className="text-base font-medium">{stats.agentName}</CardTitle>
+                                      </CardHeader>
+                                      <CardContent className="flex-grow flex flex-col justify-between pt-2">
+                                        {stats.totalArticles > 0 ? (
+                                            <>
+                                                <div>
+                                                    <div className="mb-1 flex justify-between text-xs text-muted-foreground">
+                                                        <span>{stats.userScreenedCount} / {stats.totalArticles} screened</span>
+                                                        <span>{agentProgress}%</span>
+                                                    </div>
+                                                    <Progress value={agentProgress} className="w-full h-2 mb-3" />
+                                                </div>
+                                                <div className="grid grid-cols-3 gap-2 text-center text-xs mt-auto">
+                                                    <div>
+                                                        <p className="text-muted-foreground">Included</p>
+                                                        <p className="text-lg font-bold">{stats.includeCount}</p>
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-muted-foreground">Maybe</p>
+                                                        <p className="text-lg font-bold">{stats.maybeCount}</p>
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-muted-foreground">Excluded</p>
+                                                        <p className="text-lg font-bold">{stats.excludeCount}</p>
+                                                    </div>
+                                                </div>
+                                            </>
+                                          ) : (
+                                            <p className="text-center text-sm text-muted-foreground py-4">No articles in project.</p>
+                                          )}
+                                      </CardContent>
+                                  </Card>
+                              );
+                          })}
+                      </div>
+                  ) : (
+                      <p className="text-center text-muted-foreground py-4">
+                          {agentError ? agentError : "No screening data available for AI agents in this project."}
+                      </p>
+                  )}
+              </section>
+
+              <Separator />
 
               {/* --- Screening Stats & Actions --- */}
-                 <div className="mt-8 border-t pt-6">
+                 <section>
                     <div className="flex justify-between items-center mb-4 gap-2">
                         <h3 className="text-lg font-semibold">
                             Your Screening Progress
                         </h3>
-                        {/* Container for buttons */}
                         <div className="flex items-center gap-2">
-                            {/* Review Conflicts Button */}
-                            {screeningStats && screeningStats.totalArticles > 0 && (
-                                <Link href="/review" passHref>
-                                    <Button size="sm" variant="secondary">
-                                        Review Conflicts
-                                    </Button>
-                                </Link>
-                            )}
-                            {/* Start/Continue Screening Button */}
-                            {screeningStats && screeningStats.totalArticles > 0 && (
-                                <Link href={`/screening/${selectedProjectId}`} passHref>
-                                    <Button size="sm">
-                                        {screeningStats.userScreenedCount > 0 ? "Continue Screening" : "Start Screening"}
-                                    </Button>
-                                </Link>
-                            )}
+                            {screeningStats && screeningStats.totalArticles > 0 && ( <Link href="/review" passHref><Button size="sm" variant="secondary">Review Project</Button></Link> )}
+                            {screeningStats && screeningStats.totalArticles > 0 && ( <Link href={`/screening/${selectedProjectId}`} passHref><Button size="sm">{screeningStats.userScreenedCount > 0 ? "Continue Screening" : "Start Screening"}</Button></Link> )}
                         </div>
                     </div>
 
-                    {loadingStats ? (
-                         <div className="flex justify-center items-center py-8"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>
-                    ) : screeningStats ? (
-                        <div>
-                            {screeningStats.totalArticles > 0 ? (
-                                <>
-                                    <div className="mb-2 flex justify-between text-sm text-muted-foreground">
-                                        <span>
-                                            {screeningStats.userScreenedCount} / {screeningStats.totalArticles} articles screened
-                                        </span>
-                                        <span>{progressPercent}%</span>
-                                    </div>
-                                    <Progress value={progressPercent} className="w-full mb-4" />
-                                    <Separator className="my-4" />
-                                    <div className="grid grid-cols-3 gap-4 text-center">
-                                        <div>
-                                            <p className="text-xs text-muted-foreground">Included</p>
-                                            <p className="text-xl font-bold">{screeningStats.includeCount}</p>
-                                        </div>
-                                        <div>
-                                            <p className="text-xs text-muted-foreground">Maybe</p>
-                                            <p className="text-xl font-bold">{screeningStats.maybeCount}</p>
-                                        </div>
-                                        <div>
-                                            <p className="text-xs text-muted-foreground">Excluded</p>
-                                            <p className="text-xl font-bold">{screeningStats.excludeCount}</p>
-                                        </div>
-                                    </div>
-                                </>
-                             ) : (
-                                 <p className="text-center text-muted-foreground py-4">
-                                    No articles have been imported into this project yet.
-                                 </p>
-                             )}
-                        </div>
-                     ) : error ? ( // Display fetch error if stats couldn't load
-                         <Alert variant="destructive">
-                           <AlertDescription>{error}</AlertDescription>
-                         </Alert>
-                     ) : (
-                         <p className="text-center text-muted-foreground py-4">
-                            No screening data available.
-                         </p>
-                     )}
-                 </div>
+                    {loadingStats ? ( <div className="flex justify-center py-8"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>
+                    ) : screeningStats ? ( <div> {screeningStats.totalArticles > 0 ? ( <> <div className="mb-2 flex justify-between text-sm text-muted-foreground"><span>{screeningStats.userScreenedCount} / {screeningStats.totalArticles} screened</span><span>{progressPercent}%</span></div><Progress value={progressPercent} className="w-full mb-4" /><Separator className="my-4" /><div className="grid grid-cols-3 gap-4 text-center"><div><p className="text-xs text-muted-foreground">Included</p><p className="text-xl font-bold">{screeningStats.includeCount}</p></div><div><p className="text-xs text-muted-foreground">Maybe</p><p className="text-xl font-bold">{screeningStats.maybeCount}</p></div><div><p className="text-xs text-muted-foreground">Excluded</p><p className="text-xl font-bold">{screeningStats.excludeCount}</p></div></div></> ) : ( <p className="text-center text-muted-foreground py-4">No articles imported yet.</p> )} </div>
+                    ) : error && error.includes("stats") ? ( <Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert> // Check if error is stat-related
+                    ) : ( <p className="text-center text-muted-foreground py-4">No screening data available.</p> )}
+                 </section>
            </div>
          ) : (
             <div className="flex items-center justify-center h-full">
-                 {/* Message when no project selected */}
-                 <p className="text-center text-muted-foreground">
-                   {projects.length > 0 ? "Please select a project above." : "Create or join a project."}
-                 </p>
+                 <p className="text-center text-muted-foreground">{projects.length > 0 ? "Please select a project above." : "Create or join a project."}</p>
              </div>
          )}
       </div>
