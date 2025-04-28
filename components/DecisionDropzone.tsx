@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useCallback, ChangeEvent, DragEvent } from 'react';
-import { UploadCloud, FileText, X } from 'lucide-react'; // Icons
+import { UploadCloud, FileText, X, Loader2 } from 'lucide-react'; // Icons
 import { cn } from "@/lib/utils"; // Utility for class names
 import { Button } from '@/components/ui/button';
 
@@ -120,25 +120,25 @@ export function DecisionDropzone({
     reader.readAsText(file);
   };
 
-  const handleDragEnter = (e: DragEvent<HTMLDivElement>) => {
+  const handleDragEnter = (e: React.DragEvent<HTMLLabelElement>) => {
     e.preventDefault();
     e.stopPropagation();
     if (!disabled) setIsDragging(true);
   };
 
-  const handleDragLeave = (e: DragEvent<HTMLDivElement>) => {
+  const handleDragLeave = (e: React.DragEvent<HTMLLabelElement>) => {
     e.preventDefault();
     e.stopPropagation();
     setIsDragging(false);
   };
 
-  const handleDragOver = (e: DragEvent<HTMLDivElement>) => {
+  const handleDragOver = (e: React.DragEvent<HTMLLabelElement>) => {
     e.preventDefault();
     e.stopPropagation();
     // Optional: add visual cue for droppable area
   };
 
-  const handleDrop = (e: DragEvent<HTMLDivElement>) => {
+  const handleDrop = (e: React.DragEvent<HTMLLabelElement>) => {
     e.preventDefault();
     e.stopPropagation();
     setIsDragging(false);
