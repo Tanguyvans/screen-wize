@@ -6,9 +6,10 @@ import { User } from '@supabase/supabase-js';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Loader2 } from "lucide-react";
+import { Loader2, Download } from "lucide-react";
 import Link from 'next/link';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ResolveConflictModal } from '@/components/ResolveConflictModal';
 
 // --- Data Types ---
 interface Project {
@@ -37,7 +38,7 @@ interface AgentReviewStats {
 }
 
 // Type for a single decision linked to a user OR an agent
-interface Decision {
+export interface Decision {
   user_id: string | null; // Allow null
   agent_id: string | null; // Add agent_id, allow null
   decision: 'include' | 'exclude' | 'maybe';
@@ -46,23 +47,31 @@ interface Decision {
 }
 
 // Type for an article on the review page, including its decisions and conflict status
-interface ReviewArticle {
+export interface ReviewArticle {
   id: string;
   pmid: string;
   title: string;
   abstract: string;
   decisions: Decision[];
   conflict: boolean; // Flag to indicate disagreement
+  resolved_decision?: ScreeningDecision | null; // Re-add resolved_decision
 }
 
-// // Type for aggregated stats (Commented out for now, focus on conflicts)
-// interface AggregatedStats {
-//   totalArticles: number;
-//   totalScreened: number;
-//   totalInclude: number;
-//   totalMaybe: number;
-//   totalExclude: number;
-// }
+// Add ScreeningDecision type if not imported globally
+type ScreeningDecision = 'include' | 'exclude' | 'maybe';
+
+// --- NEW: Type for Resolved Articles display (Updated) ---
+interface ResolvedArticle {
+    id: string;
+    pmid: string;
+    title: string;
+    abstract: string;
+    resolved_decision: ScreeningDecision;
+    resolved_at: string;
+    resolved_by: string | null; // Changed from resolver_email to resolved_by (uuid string or null)
+    original_decisions: Decision[]; // <-- NEW: Add original decisions array
+}
+// ---------------------------------------------
 
 // --- Component ---
 // No longer receives projectId as a prop
@@ -77,6 +86,18 @@ export default function ReviewInterface() {
   const [isLoadingProjects, setIsLoadingProjects] = useState(true); // Loading for projects
   const [isLoadingReviewData, setIsLoadingReviewData] = useState(false); // Separate loading for review data
   const [error, setError] = useState<string | null>(null);
+  const [resolvedArticles, setResolvedArticles] = useState<ResolvedArticle[]>([]); // <-- NEW State
+  const [userEmailMap, setUserEmailMap] = useState<Map<string, string>>(new Map()); // <-- NEW State for the map
+
+  // --- Re-add Modal State ---
+  const [isResolveModalOpen, setIsResolveModalOpen] = useState(false);
+  const [selectedArticleForResolution, setSelectedArticleForResolution] = useState<ReviewArticle | null>(null);
+  // ---------------------
+
+  // --- NEW State for Resolved Download ---
+  const [isDownloadingResolved, setIsDownloadingResolved] = useState(false);
+  const [downloadResolvedError, setDownloadResolvedError] = useState<string | null>(null);
+  // --------------------------------------
 
   // --- Fetch User ---
   useEffect(() => {
@@ -134,27 +155,32 @@ export default function ReviewInterface() {
   }, [user?.id, fetchProjects]);
 
 
-  // --- Fetch Review Data (Modified to include agent stats calculation AND Decision Pagination) ---
+  // --- Fetch Review Data (Store userEmailMap in state) ---
   const fetchReviewData = useCallback(async () => {
     if (!selectedProjectId) {
         setUserStats([]);
-        setAgentStats([]); // <-- Clear agent stats
+        setAgentStats([]);
         setConflictingArticles([]);
         setConflictCount(0);
+        setResolvedArticles([]);
+        setUserEmailMap(new Map()); // <-- Clear map state
         return;
     }
 
     setIsLoadingReviewData(true);
     setError(null);
-    setUserStats([]); // Clear previous results
-    setAgentStats([]); // <-- Clear agent stats
+    setUserStats([]);
+    setAgentStats([]);
     setConflictingArticles([]);
     setConflictCount(0);
+    setResolvedArticles([]);
+    setUserEmailMap(new Map()); // <-- Clear map state
     console.log(`Fetching full review data for project: ${selectedProjectId}`);
 
     try {
-        // --- MODIFIED: Fetch ALL decisions in batches ---
-        let allDecisionsRaw: { article_id: string; user_id: string | null; agent_id: string | null; decision: 'include' | 'exclude' | 'maybe'; }[] = [];
+        // --- Step 1: Fetch User and Agent Stats (Still needed separately for now) ---
+        // Fetch ALL decisions just for calculating stats (could potentially be optimized further)
+        let allDecisionsRaw: any[] = [];
         let currentOffset = 0;
         const BATCH_DECISION_SIZE = 1000; // Supabase default limit, can adjust
         let fetchMore = true;
@@ -186,7 +212,7 @@ export default function ReviewInterface() {
             }
         }
         console.log(`Total decisions fetched for project: ${allDecisionsRaw.length}`);
-        // --- End of MODIFIED fetching ---
+        // --- End of Stats Calculation ---
 
         if (allDecisionsRaw.length === 0) {
             console.log("No decisions found for this project.");
@@ -198,14 +224,16 @@ export default function ReviewInterface() {
         const userIds = [...new Set(allDecisionsRaw.map(d => d.user_id).filter(id => id !== null))] as string[];
         const agentIds = [...new Set(allDecisionsRaw.map(d => d.agent_id).filter(id => id !== null))] as string[];
 
-        const userEmailMap = new Map<string, string>();
+        // --- Create local map ---
+        const localUserEmailMap = new Map<string, string>();
         if (userIds.length > 0) {
             const { data: profiles, error: profileError } = await supabase
               .from('profiles')
               .select('id, email')
               .in('id', userIds);
             if (profileError) { console.warn("Could not fetch user emails:", profileError.message); }
-            else { profiles?.forEach(p => { if (p.id && p.email) { userEmailMap.set(p.id, p.email); } }); }
+             // --- Populate local map ---
+            else { profiles?.forEach(p => { if (p.id && p.email) { localUserEmailMap.set(p.id, p.email); } }); }
         }
 
         const agentNameMap = new Map<string, string>();
@@ -218,7 +246,7 @@ export default function ReviewInterface() {
             if (agentError) { console.warn("Could not fetch agent names:", agentError.message); }
             else { agents?.forEach(a => { if (a.id && a.name) { agentNameMap.set(a.id, a.name); } }); }
         }
-        console.log("User Email Map:", userEmailMap);
+        console.log("Local User Email Map:", localUserEmailMap); // Log local map
         console.log("Agent Name Map:", agentNameMap);
         // --------------------------------
 
@@ -233,7 +261,7 @@ export default function ReviewInterface() {
             // --- Update User Stats (Only if user_id is present) ---
             if (rawDecision.user_id) {
                 const userId = rawDecision.user_id;
-                const userIdentifier = userEmailMap.get(userId) || userId;
+                const userIdentifier = localUserEmailMap.get(userId) || userId;
                 if (!statsByUser.has(userId)) {
                     statsByUser.set(userId, { userId, userEmail: userIdentifier, includeCount: 0, maybeCount: 0, excludeCount: 0, totalScreened: 0 });
                 }
@@ -265,7 +293,7 @@ export default function ReviewInterface() {
                  agent_id: rawDecision.agent_id, // Keep the ID
                  decision: rawDecision.decision,
                  // Look up email if user_id exists
-                 user_email: rawDecision.user_id ? (userEmailMap.get(rawDecision.user_id) || undefined) : undefined,
+                 user_email: rawDecision.user_id ? (localUserEmailMap.get(rawDecision.user_id) || undefined) : undefined,
                  // Look up agent name if agent_id exists
                  agent_name: rawDecision.agent_id ? (agentNameMap.get(rawDecision.agent_id) || undefined) : undefined,
             };
@@ -276,93 +304,71 @@ export default function ReviewInterface() {
         // Set user stats state
         setUserStats(Array.from(statsByUser.values()));
         setAgentStats(Array.from(statsByAgent.values())); // <-- Set agent stats state
+        setUserEmailMap(localUserEmailMap); // <-- Store the populated map in state
+        // --------------------------------
 
-        // 4. Fetch article details for articles that have decisions
-        const articleIdsWithDecisions = Array.from(decisionsByArticle.keys());
-        if (articleIdsWithDecisions.length === 0) {
-             console.log("No articles have decisions yet.");
-             setIsLoadingReviewData(false);
-             return;
+        // --- Step 2: Fetch ONLY Conflicting Articles using RPC ---
+        console.log("Fetching conflicting articles via RPC...");
+        const { data: conflictsData, error: conflictRpcError } = await supabase
+            .rpc('get_conflicting_articles', { p_project_id: selectedProjectId }); // Call the function
+
+        if (conflictRpcError) {
+            console.error("Error calling get_conflicting_articles RPC:", conflictRpcError);
+            throw conflictRpcError;
         }
 
-        console.log('Article IDs for filtering:', articleIdsWithDecisions);
-        console.log('Number of Article IDs:', articleIdsWithDecisions.length);
+        console.log(`RPC returned ${conflictsData?.length || 0} conflicting articles.`);
 
-        // --- IMPORTANT: Fetch ALL relevant articles, not just one ---
-        // --- Remove the .limit(1) and use .in() filter ---
-        console.log(`Fetching details for ${articleIdsWithDecisions.length} articles...`);
-        const BATCH_SIZE = 500; // Handle potential large number of articles
-        let articlesData: { id: string; pmid: string; title: string; abstract: string; }[] = [];
-        for (let i = 0; i < articleIdsWithDecisions.length; i += BATCH_SIZE) {
-             const batchIds = articleIdsWithDecisions.slice(i, i + BATCH_SIZE);
-             const { data: batchData, error: articlesError } = await supabase
-                 .from('articles')
-                 .select('id, pmid, title, abstract') // Ensure pmid is selected
-                 .eq('project_id', selectedProjectId) // Ensure correct project
-                 .in('id', batchIds); // Fetch articles with decisions
-
-             if (articlesError) {
-                 console.error("Supabase articles fetch error object:", JSON.stringify(articlesError, null, 2));
-                 throw new Error(`Failed to fetch project articles batch: ${articlesError.message}`);
-             }
-             if (batchData) {
-                 articlesData = articlesData.concat(batchData as { id: string; pmid: string; title: string; abstract: string; }[]);
-             }
+        // --- Process RPC results ---
+        if (conflictsData) {
+            // The data should already be in the ReviewArticle format (mostly)
+            // We might need to parse the decisions JSON if needed by the component
+            const formattedConflicts: ReviewArticle[] = conflictsData.map((conflict: any) => ({
+                id: conflict.id,
+                pmid: conflict.pmid,
+                title: conflict.title,
+                abstract: conflict.abstract,
+                // Decisions might already be correctly formatted JSON from the function
+                // If not, parse here: decisions: JSON.parse(conflict.decisions || '[]'),
+                decisions: conflict.decisions || [], // Assuming direct use is ok
+                conflict: true, // They are conflicts by definition from the RPC
+                resolved_decision: null // RPC only returns unresolved
+            }));
+            setConflictingArticles(formattedConflicts);
+            setConflictCount(formattedConflicts.length);
+        } else {
+            setConflictingArticles([]);
+            setConflictCount(0);
         }
-        console.log(`Fetched details for ${articlesData.length} articles.`);
-        // ------------------------------------------------------
+        // --- End of RPC processing ---
 
-        // 5. Identify Conflicts and build final list
-        let currentConflictCount = 0;
-        console.log(`Evaluating conflicts for ${articlesData.length} articles...`);
-        const articlesForReview: ReviewArticle[] = articlesData.map(article => {
-             const decisions = decisionsByArticle.get(article.id) || [];
-             let conflict = false;
+        // --- Fetch Resolved Articles via RPC ---
+        console.log("Fetching resolved articles via RPC...");
+        const { data: resolvedData, error: resolvedRpcError } = await supabase
+            .rpc('get_resolved_articles', { p_project_id: selectedProjectId });
 
-             // --- Add Detailed Logging ---
-             if (decisions.length >= 1) {
-                console.log(`Article ID: ${article.id} (PMID: ${article.pmid}) - Decisions Found:`, JSON.stringify(decisions.map(d => ({ d: d.decision, u: d.user_id, ue: d.user_email, a: d.agent_id, an: d.agent_name })), null, 2));
-             }
-             // ----------------------------
+        if (resolvedRpcError) {
+             // This error should no longer be 403 due to auth.users
+             console.error("Error calling get_resolved_articles RPC:", resolvedRpcError);
+             setError(prev => prev ? `${prev}; Failed to fetch resolved articles: ${resolvedRpcError.message}` : `Failed to fetch resolved articles: ${resolvedRpcError.message}`);
+             setResolvedArticles([]);
+        } else {
+             console.log(`RPC returned ${resolvedData?.length || 0} resolved articles.`);
+             // --- Data now matches the updated ResolvedArticle interface ---
+             setResolvedArticles(resolvedData as ResolvedArticle[] || []);
+             // ------------------------------------------------------------
+        }
 
-             // Conflict check: at least two decisions, and they are not all the same
-             if (decisions.length >= 2) {
-                 const uniqueDecisions = new Set(decisions.map(d => d.decision));
-                 if (uniqueDecisions.size > 1) {
-                     console.log(`   -> CONFLICT DETECTED for Article ${article.id}`);
-                     conflict = true;
-                     currentConflictCount++;
-                 } else {
-                     console.log(`   -> No conflict (all decisions same value) for Article ${article.id}`);
-                 }
-             } else if (decisions.length < 2) {
-                 console.log(`   -> No conflict (< 2 decisions) for Article ${article.id}`);
-             }
-
-             return {
-                 id: article.id,
-                 pmid: article.pmid,
-                 title: article.title,
-                 abstract: article.abstract,
-                 decisions: decisions,
-                 conflict: conflict,
-             };
-        });
-
-        // 6. Set State for conflicts
-        setConflictingArticles(articlesForReview.filter(a => a.conflict));
-        setConflictCount(currentConflictCount);
-
-        // --- Updated Log Message ---
-        console.log(`Review data processed. Users with decisions: ${statsByUser.size}. Agents with decisions: ${statsByAgent.size}. Total conflicts found: ${currentConflictCount}. Articles with conflicts displayed: ${articlesForReview.filter(a => a.conflict).length}`);
-
-    } catch (err: any) {
+    } catch (err: any) { // Catch errors from conflict fetch primarily
         console.error("Error fetching review data:", err);
         setError(`Failed to load review data: ${err.message}`);
+        // Clear all state on error
         setUserStats([]);
-        setAgentStats([]); // Clear agent stats on error too
+        setAgentStats([]);
         setConflictingArticles([]);
         setConflictCount(0);
+        setResolvedArticles([]);
+        setUserEmailMap(new Map()); // <-- Clear map on error
     } finally {
         setIsLoadingReviewData(false);
     }
@@ -370,30 +376,157 @@ export default function ReviewInterface() {
 
   // Trigger data fetch when selected project changes
   useEffect(() => {
-    fetchReviewData();
-  }, [fetchReviewData]); // fetchReviewData has selectedProjectId in its deps
+    if (selectedProjectId) {
+        fetchReviewData();
+    } else {
+        // Clear data if project is deselected
+        setUserStats([]);
+        setAgentStats([]);
+        setConflictingArticles([]);
+        setConflictCount(0);
+        setError(null);
+    }
+  }, [selectedProjectId, fetchReviewData]);
 
 
-  // --- Handle Project Selection Change ---
+  // --- Handle Project Selection Change (Clear map state) ---
   const handleProjectSelect = (projectId: string) => {
     console.log("Review Project selected:", projectId);
     setSelectedProjectId(projectId);
-    // Clear previous review results immediately
     setUserStats([]);
-    setAgentStats([]); // <-- Clear agent stats on project change
-    // Data fetching will be triggered by the useEffect hook above
+    setAgentStats([]);
+    setConflictingArticles([]);
+    setResolvedArticles([]);
+    setConflictCount(0);
+    setError(null);
+    setUserEmailMap(new Map()); // <-- Clear map on project change
+    setDownloadResolvedError(null); // <-- Clear download error
   };
 
-  // --- Resolve Conflict Placeholder ---
-  const handleResolveConflict = (articleId: string) => {
-      console.log("TODO: Implement conflict resolution logic for article:", articleId);
-      alert(`Resolve action triggered for article ${articleId}. (Implementation needed)`);
-      // This would typically involve:
-      // - Showing a modal/dedicated view for the specific article.
-      // - Allowing a user (maybe admin/lead) to make a final decision.
-      // - Updating the database (e.g., adding a 'resolved_decision' column or updating status).
-      // - Refreshing the review data.
+  // --- Re-implement handler to OPEN the Modal ---
+  const handleResolveConflict = (article: ReviewArticle) => {
+      console.log("Opening resolve modal for article:", article.id);
+      setSelectedArticleForResolution(article);
+      setIsResolveModalOpen(true);
   };
+
+  // --- Re-add handler to CLOSE the Modal ---
+  const handleCloseResolveModal = () => {
+      setIsResolveModalOpen(false);
+      setSelectedArticleForResolution(null);
+  };
+
+  // --- Handle Resolution Saved (Optimistic + Refetch Resolved) ---
+  const handleResolutionSaved = () => {
+      if (!selectedArticleForResolution) return;
+
+      const resolvedArticleId = selectedArticleForResolution.id;
+      console.log(`Conflict resolved for ${resolvedArticleId}, updating conflict list optimistically...`);
+
+      // Optimistic update for conflict list
+      setConflictingArticles(prevArticles =>
+          prevArticles.filter(article => article.id !== resolvedArticleId)
+      );
+      setConflictCount(prevCount => Math.max(0, prevCount - 1));
+
+      handleCloseResolveModal(); // Close the modal
+
+      // --- Fetch ONLY the resolved articles again to update that list ---
+      // Avoids refetching everything
+      const fetchJustResolved = async () => {
+           if (!selectedProjectId) return;
+           console.log("Refreshing resolved articles list...");
+           const { data: resolvedData, error: resolvedRpcError } = await supabase
+               .rpc('get_resolved_articles', { p_project_id: selectedProjectId });
+           if (resolvedRpcError) {
+                console.error("Error refreshing resolved articles:", resolvedRpcError);
+                // Optionally show a temporary error message
+           } else {
+                setResolvedArticles(resolvedData as ResolvedArticle[] || []);
+           }
+      }
+      fetchJustResolved();
+      // ---------------------------------------------------------------
+  };
+
+  // --- NEW: Handle Download Resolved Articles ---
+  const handleDownloadResolved = useCallback(async () => {
+    if (!selectedProjectId || isDownloadingResolved) return;
+
+    setIsDownloadingResolved(true);
+    setDownloadResolvedError(null);
+    console.log("Downloading resolved articles including original decisions...");
+
+    try {
+        // Fetch fresh resolved data using the updated RPC
+        const { data: resolvedData, error: rpcError } = await supabase
+            .rpc('get_resolved_articles', { p_project_id: selectedProjectId });
+
+        if (rpcError) {
+            throw new Error(`Failed to fetch resolved articles: ${rpcError.message}`);
+        }
+
+        if (!resolvedData || resolvedData.length === 0) {
+            setDownloadResolvedError("No resolved articles found to download.");
+            setIsDownloadingResolved(false);
+            return;
+        }
+
+        // Format data for TXT file
+        let fileContent = "";
+        resolvedData.forEach((article: ResolvedArticle, index: number) => {
+            fileContent += `PMID: ${article.pmid}\n`;
+            fileContent += `Title: ${article.title || 'N/A'}\n`;
+            fileContent += `Abstract: ${article.abstract || 'N/A'}\n`;
+
+            // --- Add Original Decisions ---
+            fileContent += `Original Decisions:\n`;
+            if (article.original_decisions && article.original_decisions.length > 0) {
+                 article.original_decisions.forEach((dec: Decision) => {
+                     let displayName = 'Unknown';
+                     // Try to get email from map if user, otherwise use fallback ID/Name
+                     if (dec.agent_id) displayName = dec.agent_name || `Agent (${dec.agent_id?.substring(0,6)}...)`;
+                     else if (dec.user_id) displayName = userEmailMap.get(dec.user_id) || `User (${dec.user_id?.substring(0,6)}...)`;
+                     fileContent += `  - ${displayName}: ${dec.decision.toUpperCase()}\n`;
+                 });
+            } else {
+                 fileContent += `  (No original decisions recorded)\n`;
+            }
+            // ----------------------------
+
+            fileContent += `Final Decision: ${article.resolved_decision.toUpperCase()}\n`;
+            const resolverDisplay = article.resolved_by ? (userEmailMap.get(article.resolved_by) || `User ID: ${article.resolved_by.substring(0, 8)}...`) : 'Unknown';
+            fileContent += `Resolved By: ${resolverDisplay}\n`;
+            fileContent += `Resolved At: ${new Date(article.resolved_at).toLocaleString()}\n`;
+
+            if (index < resolvedData.length - 1) {
+                fileContent += "---\n"; // Separator between articles
+            }
+        });
+
+        // Trigger browser download (filename logic remains the same)
+        const blob = new Blob([fileContent], { type: 'text/plain;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        const currentProject = projects.find(p => p.id === selectedProjectId);
+        const projectName = currentProject?.name || selectedProjectId.substring(0,8);
+        link.download = `project_${projectName}_resolved_articles_with_originals.txt`; // Updated filename
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+
+        console.log("Resolved articles download initiated.");
+
+    } catch (err: any) {
+        console.error("Error downloading resolved articles:", err);
+        setDownloadResolvedError(err.message || "An unknown error occurred during download.");
+    } finally {
+        setIsDownloadingResolved(false);
+    }
+    // Update dependencies if needed (userEmailMap is now used)
+  }, [selectedProjectId, projects, isDownloadingResolved, userEmailMap]);
 
   // --- Render Logic ---
   const selectedProjectName = projects.find(p => p.id === selectedProjectId)?.name || '';
@@ -570,9 +703,9 @@ export default function ReviewInterface() {
                                      );
                                  })}
                                </ul>
-                               {/* Resolve Button */}
+                               {/* --- Update Button onClick --- */}
                                <div className="mt-4 text-right">
-                                   <Button variant="outline" size="sm" onClick={() => handleResolveConflict(article.id)}>
+                                   <Button variant="outline" size="sm" onClick={() => handleResolveConflict(article)}>
                                         Resolve Conflict...
                                    </Button>
                                </div>
@@ -582,10 +715,84 @@ export default function ReviewInterface() {
                      </div>
                    ) : (
                      <p className="text-center text-muted-foreground mt-4">
-                       No articles with conflicting decisions (Include vs Exclude) found.
+                       No unresolved articles with conflicting decisions found.
                      </p>
                    )}
                 </section>
+
+                {/* === NEW: Resolved Articles Section (Added Download Button) === */}
+                <section className="mt-8 border-t pt-6">
+                   <div className="flex justify-between items-center mb-4"> {/* Wrapper for title and button */}
+                       <h2 className="text-xl font-semibold">Resolved Articles: {selectedProjectName}</h2>
+                       {/* --- Download Button --- */}
+                       <Button
+                           variant="outline"
+                           size="sm"
+                           onClick={handleDownloadResolved}
+                           disabled={isDownloadingResolved || !selectedProjectId || resolvedArticles.length === 0}
+                       >
+                          {isDownloadingResolved ? (
+                             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          ) : (
+                             <Download className="mr-2 h-4 w-4" />
+                          )}
+                          Download Resolved Data
+                       </Button>
+                       {/* ----------------------- */}
+                   </div>
+                    {/* Display download error */}
+                    {downloadResolvedError && (
+                        <Alert variant="destructive" className="mb-4">
+                           <AlertTitle>Download Error</AlertTitle>
+                           <AlertDescription>{downloadResolvedError}</AlertDescription>
+                        </Alert>
+                    )}
+
+                   {resolvedArticles.length > 0 ? (
+                     <div className="space-y-4">
+                       {resolvedArticles.map(article => {
+                           // Determine color based on decision
+                           let decisionColor = 'text-gray-700';
+                           if (article.resolved_decision === 'include') decisionColor = 'text-green-700';
+                           else if (article.resolved_decision === 'exclude') decisionColor = 'text-red-700';
+                           else if (article.resolved_decision === 'maybe') decisionColor = 'text-yellow-700';
+
+                           // --- Look up in userEmailMap (now from state) ---
+                           const resolverDisplay = article.resolved_by ? (userEmailMap.get(article.resolved_by) || `User ID: ${article.resolved_by.substring(0, 8)}...`) : 'Unknown';
+                           // ----------------------------------------------------
+
+                           return (
+                             <Card key={article.id} className="border-l-4 border-blue-500">
+                                <CardHeader className="pb-2">
+                                   <div className="flex justify-between items-start">
+                                        <div>
+                                            <CardTitle className="text-lg">{article.title}</CardTitle>
+                                            <CardDescription>PMID: {article.pmid}</CardDescription>
+                                        </div>
+                                        <div className="text-right flex-shrink-0 ml-4">
+                                             <p className={`text-lg font-bold ${decisionColor}`}>
+                                                Final: {article.resolved_decision.charAt(0).toUpperCase() + article.resolved_decision.slice(1)}
+                                             </p>
+                                             <p className="text-xs text-muted-foreground mt-1">
+                                                 Resolved by: {resolverDisplay} {/* Uses map from state */}
+                                             </p>
+                                             <p className="text-xs text-muted-foreground">
+                                                 On: {new Date(article.resolved_at).toLocaleString()}
+                                             </p>
+                                        </div>
+                                   </div>
+                                </CardHeader>
+                             </Card>
+                           );
+                       })}
+                     </div>
+                   ) : (
+                     <p className="text-center text-muted-foreground mt-4">
+                       No conflicts have been resolved for this project yet.
+                     </p>
+                   )}
+                </section>
+                {/* === End Resolved Articles Section === */}
               </>
             )}
 
@@ -600,6 +807,15 @@ export default function ReviewInterface() {
       {!selectedProjectId && !isLoadingProjects && projects.length > 0 && (
           <p className="text-center text-muted-foreground mt-8">Please select a project above to review.</p>
       )}
+
+      {/* --- Re-add Modal Rendering --- */}
+      <ResolveConflictModal
+           isOpen={isResolveModalOpen}
+           onClose={handleCloseResolveModal}
+           article={selectedArticleForResolution}
+           user={user} // Pass the logged-in user
+           onResolved={handleResolutionSaved}
+      />
     </div>
   );
 } 
