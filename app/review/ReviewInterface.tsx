@@ -61,15 +61,15 @@ export interface ReviewArticle {
 type ScreeningDecision = 'include' | 'exclude' | 'maybe';
 
 // --- NEW: Type for Resolved Articles display (Updated) ---
-interface ResolvedArticle {
+interface FinalizedArticle {
     id: string;
     pmid: string;
     title: string;
     abstract: string;
-    resolved_decision: ScreeningDecision;
-    resolved_at: string;
-    resolved_by: string | null; // Changed from resolver_email to resolved_by (uuid string or null)
-    original_decisions: Decision[]; // <-- NEW: Add original decisions array
+    final_decision: ScreeningDecision;
+    finalized_at: string;
+    resolver_id: string | null;
+    original_decisions: Decision[];
 }
 // ---------------------------------------------
 
@@ -86,7 +86,7 @@ export default function ReviewInterface() {
   const [isLoadingProjects, setIsLoadingProjects] = useState(true); // Loading for projects
   const [isLoadingReviewData, setIsLoadingReviewData] = useState(false); // Separate loading for review data
   const [error, setError] = useState<string | null>(null);
-  const [resolvedArticles, setResolvedArticles] = useState<ResolvedArticle[]>([]); // <-- NEW State
+  const [finalizedArticles, setFinalizedArticles] = useState<FinalizedArticle[]>([]); // <-- NEW State
   const [userEmailMap, setUserEmailMap] = useState<Map<string, string>>(new Map()); // <-- NEW State for the map
 
   // --- Re-add Modal State ---
@@ -95,8 +95,8 @@ export default function ReviewInterface() {
   // ---------------------
 
   // --- NEW State for Resolved Download ---
-  const [isDownloadingResolved, setIsDownloadingResolved] = useState(false);
-  const [downloadResolvedError, setDownloadResolvedError] = useState<string | null>(null);
+  const [isDownloadingFinalized, setIsDownloadingFinalized] = useState(false);
+  const [downloadFinalizedError, setDownloadFinalizedError] = useState<string | null>(null);
   // --------------------------------------
 
   // --- Fetch User ---
@@ -162,7 +162,7 @@ export default function ReviewInterface() {
         setAgentStats([]);
         setConflictingArticles([]);
         setConflictCount(0);
-        setResolvedArticles([]);
+        setFinalizedArticles([]);
         setUserEmailMap(new Map()); // <-- Clear map state
         return;
     }
@@ -173,7 +173,7 @@ export default function ReviewInterface() {
     setAgentStats([]);
     setConflictingArticles([]);
     setConflictCount(0);
-    setResolvedArticles([]);
+    setFinalizedArticles([]);
     setUserEmailMap(new Map()); // <-- Clear map state
     console.log(`Fetching full review data for project: ${selectedProjectId}`);
 
@@ -342,21 +342,19 @@ export default function ReviewInterface() {
         }
         // --- End of RPC processing ---
 
-        // --- Fetch Resolved Articles via RPC ---
-        console.log("Fetching resolved articles via RPC...");
-        const { data: resolvedData, error: resolvedRpcError } = await supabase
-            .rpc('get_resolved_articles', { p_project_id: selectedProjectId });
+        // --- Fetch Finalized Articles via RPC ---
+        console.log("Fetching finalized articles via RPC...");
+        const { data: finalizedData, error: finalizedRpcError } = await supabase
+            .rpc('get_finalized_articles', { p_project_id: selectedProjectId });
 
-        if (resolvedRpcError) {
-             // This error should no longer be 403 due to auth.users
-             console.error("Error calling get_resolved_articles RPC:", resolvedRpcError);
-             setError(prev => prev ? `${prev}; Failed to fetch resolved articles: ${resolvedRpcError.message}` : `Failed to fetch resolved articles: ${resolvedRpcError.message}`);
-             setResolvedArticles([]);
+        if (finalizedRpcError) {
+            console.error("Error calling get_finalized_articles RPC:", finalizedRpcError);
+            setError(prev => prev ? `${prev}; Failed to fetch finalized articles: ${finalizedRpcError.message}` : `Failed to fetch finalized articles: ${finalizedRpcError.message}`);
+            setFinalizedArticles([]);
         } else {
-             console.log(`RPC returned ${resolvedData?.length || 0} resolved articles.`);
-             // --- Data now matches the updated ResolvedArticle interface ---
-             setResolvedArticles(resolvedData as ResolvedArticle[] || []);
-             // ------------------------------------------------------------
+             console.log(`RPC returned ${finalizedData?.length || 0} finalized articles.`);
+             // --- Data now matches the FinalizedArticle interface ---
+             setFinalizedArticles(finalizedData as FinalizedArticle[] || []);
         }
 
     } catch (err: any) { // Catch errors from conflict fetch primarily
@@ -367,7 +365,7 @@ export default function ReviewInterface() {
         setAgentStats([]);
         setConflictingArticles([]);
         setConflictCount(0);
-        setResolvedArticles([]);
+        setFinalizedArticles([]);
         setUserEmailMap(new Map()); // <-- Clear map on error
     } finally {
         setIsLoadingReviewData(false);
@@ -396,11 +394,11 @@ export default function ReviewInterface() {
     setUserStats([]);
     setAgentStats([]);
     setConflictingArticles([]);
-    setResolvedArticles([]);
+    setFinalizedArticles([]);
     setConflictCount(0);
     setError(null);
     setUserEmailMap(new Map()); // <-- Clear map on project change
-    setDownloadResolvedError(null); // <-- Clear download error
+    setDownloadFinalizedError(null); // <-- Clear download error
   };
 
   // --- Re-implement handler to OPEN the Modal ---
@@ -416,7 +414,7 @@ export default function ReviewInterface() {
       setSelectedArticleForResolution(null);
   };
 
-  // --- Handle Resolution Saved (Optimistic + Refetch Resolved) ---
+  // --- Handle Resolution Saved (Optimistic + Refetch Finalized) ---
   const handleResolutionSaved = () => {
       if (!selectedArticleForResolution) return;
 
@@ -431,102 +429,86 @@ export default function ReviewInterface() {
 
       handleCloseResolveModal(); // Close the modal
 
-      // --- Fetch ONLY the resolved articles again to update that list ---
+      // --- Fetch ONLY the finalized articles again to update that list ---
       // Avoids refetching everything
-      const fetchJustResolved = async () => {
+      const fetchJustFinalized = async () => {
            if (!selectedProjectId) return;
-           console.log("Refreshing resolved articles list...");
-           const { data: resolvedData, error: resolvedRpcError } = await supabase
-               .rpc('get_resolved_articles', { p_project_id: selectedProjectId });
-           if (resolvedRpcError) {
-                console.error("Error refreshing resolved articles:", resolvedRpcError);
-                // Optionally show a temporary error message
+           console.log("Refreshing finalized articles list...");
+           const { data: finalizedData, error: finalizedRpcError } = await supabase
+               .rpc('get_finalized_articles', { p_project_id: selectedProjectId });
+           if (finalizedRpcError) {
+                console.error("Error refreshing finalized articles:", finalizedRpcError);
            } else {
-                setResolvedArticles(resolvedData as ResolvedArticle[] || []);
+                setFinalizedArticles(finalizedData as FinalizedArticle[] || []);
            }
       }
-      fetchJustResolved();
+      fetchJustFinalized();
       // ---------------------------------------------------------------
   };
 
-  // --- NEW: Handle Download Resolved Articles ---
-  const handleDownloadResolved = useCallback(async () => {
-    if (!selectedProjectId || isDownloadingResolved) return;
+  // --- RENAME and UPDATE Download Handler ---
+  const handleDownloadFinalized = useCallback(async () => {
+    if (!selectedProjectId || isDownloadingFinalized) return;
 
-    setIsDownloadingResolved(true);
-    setDownloadResolvedError(null);
-    console.log("Downloading resolved articles including original decisions...");
+    setIsDownloadingFinalized(true);
+    setDownloadFinalizedError(null);
+    console.log("Downloading finalized articles...");
 
     try {
-        // Fetch fresh resolved data using the updated RPC
-        const { data: resolvedData, error: rpcError } = await supabase
-            .rpc('get_resolved_articles', { p_project_id: selectedProjectId });
+        // Fetch fresh finalized data using the NEW RPC
+        const { data: finalizedData, error: rpcError } = await supabase
+            .rpc('get_finalized_articles', { p_project_id: selectedProjectId });
 
-        if (rpcError) {
-            throw new Error(`Failed to fetch resolved articles: ${rpcError.message}`);
+        if (rpcError) throw new Error(`Failed to fetch finalized articles: ${rpcError.message}`);
+        if (!finalizedData || finalizedData.length === 0) {
+            setDownloadFinalizedError("No finalized articles found to download.");
+            setIsDownloadingFinalized(false); return;
         }
 
-        if (!resolvedData || resolvedData.length === 0) {
-            setDownloadResolvedError("No resolved articles found to download.");
-            setIsDownloadingResolved(false);
-            return;
-        }
+        // Format data for TXT/TSV file
+        let fileContent = "PMID\tTitle\tAbstract\tFinalDecision\tResolverID\tFinalizedAt\tOriginalDecisions\n"; // Header
+        finalizedData.forEach((article: FinalizedArticle) => {
+            const pmid = article.pmid?.replace(/[\n\t]/g, ' ') || 'N/A';
+            const title = article.title?.replace(/[\n\t]/g, ' ') || 'N/A';
+            const abstract = article.abstract?.replace(/[\n\t]/g, ' ') || 'N/A';
+            const decision = article.final_decision?.toUpperCase() || 'N/A';
+            const resolver = article.resolver_id || 'N/A'; // Was unanimous or resolved by unknown
+            const finalizedTime = article.finalized_at ? new Date(article.finalized_at).toISOString() : 'N/A';
 
-        // Format data for TXT file
-        let fileContent = "";
-        resolvedData.forEach((article: ResolvedArticle, index: number) => {
-            fileContent += `PMID: ${article.pmid}\n`;
-            fileContent += `Title: ${article.title || 'N/A'}\n`;
-            fileContent += `Abstract: ${article.abstract || 'N/A'}\n`;
-
-            // --- Add Original Decisions ---
-            fileContent += `Original Decisions:\n`;
+            // Format original decisions into a simple string for the TSV
+            let originalDecisionsStr = "N/A";
             if (article.original_decisions && article.original_decisions.length > 0) {
-                 article.original_decisions.forEach((dec: Decision) => {
-                     let displayName = 'Unknown';
-                     // Try to get email from map if user, otherwise use fallback ID/Name
-                     if (dec.agent_id) displayName = dec.agent_name || `Agent (${dec.agent_id?.substring(0,6)}...)`;
-                     else if (dec.user_id) displayName = userEmailMap.get(dec.user_id) || `User (${dec.user_id?.substring(0,6)}...)`;
-                     fileContent += `  - ${displayName}: ${dec.decision.toUpperCase()}\n`;
-                 });
-            } else {
-                 fileContent += `  (No original decisions recorded)\n`;
+                 originalDecisionsStr = article.original_decisions.map((dec: Decision) => {
+                     let name = dec.agent_id ? (dec.agent_name || `Agent:${dec.agent_id.substring(0,6)}`) : (dec.user_id ? (userEmailMap.get(dec.user_id) || `User:${dec.user_id.substring(0,6)}`) : 'Unknown');
+                     return `${name}:${dec.decision.toUpperCase()}`;
+                 }).join('; '); // Join with semicolon
             }
-            // ----------------------------
+            originalDecisionsStr = originalDecisionsStr.replace(/[\n\t]/g, ' '); // Sanitize
 
-            fileContent += `Final Decision: ${article.resolved_decision.toUpperCase()}\n`;
-            const resolverDisplay = article.resolved_by ? (userEmailMap.get(article.resolved_by) || `User ID: ${article.resolved_by.substring(0, 8)}...`) : 'Unknown';
-            fileContent += `Resolved By: ${resolverDisplay}\n`;
-            fileContent += `Resolved At: ${new Date(article.resolved_at).toLocaleString()}\n`;
-
-            if (index < resolvedData.length - 1) {
-                fileContent += "---\n"; // Separator between articles
-            }
+            fileContent += `${pmid}\t${title}\t${abstract}\t${decision}\t${resolver}\t${finalizedTime}\t${originalDecisionsStr}\n`;
         });
 
-        // Trigger browser download (filename logic remains the same)
+        // Trigger browser download
         const blob = new Blob([fileContent], { type: 'text/plain;charset=utf-8' });
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
         const currentProject = projects.find(p => p.id === selectedProjectId);
         const projectName = currentProject?.name || selectedProjectId.substring(0,8);
-        link.download = `project_${projectName}_resolved_articles_with_originals.txt`; // Updated filename
+        link.download = `project_${projectName}_finalized_articles.txt`;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
         URL.revokeObjectURL(url);
-
-        console.log("Resolved articles download initiated.");
+        console.log("Finalized articles download initiated as .txt");
 
     } catch (err: any) {
-        console.error("Error downloading resolved articles:", err);
-        setDownloadResolvedError(err.message || "An unknown error occurred during download.");
+        console.error("Error downloading finalized articles:", err);
+        setDownloadFinalizedError(err.message || "An unknown error occurred during download.");
     } finally {
-        setIsDownloadingResolved(false);
+        setIsDownloadingFinalized(false);
     }
-    // Update dependencies if needed (userEmailMap is now used)
-  }, [selectedProjectId, projects, isDownloadingResolved, userEmailMap]);
+  }, [selectedProjectId, projects, isDownloadingFinalized, userEmailMap]);
 
   // --- Render Logic ---
   const selectedProjectName = projects.find(p => p.id === selectedProjectId)?.name || '';
@@ -668,7 +650,7 @@ export default function ReviewInterface() {
                    </p>
 
                    {conflictingArticles.length > 0 ? (
-                     <div className="space-y-4">
+                     <div className="space-y-4 max-h-[600px] overflow-y-auto pr-2">
                        {conflictingArticles.map(article => (
                          <Card key={article.id} className="border-l-4 border-red-500">
                             <CardHeader className="pb-2">
@@ -720,49 +702,46 @@ export default function ReviewInterface() {
                    )}
                 </section>
 
-                {/* === NEW: Resolved Articles Section (Added Download Button) === */}
+                {/* === NEW: Finalized Articles Section (Added Download Button) === */}
                 <section className="mt-8 border-t pt-6">
                    <div className="flex justify-between items-center mb-4"> {/* Wrapper for title and button */}
-                       <h2 className="text-xl font-semibold">Resolved Articles: {selectedProjectName}</h2>
+                       <h2 className="text-xl font-semibold">Finalized Articles: {selectedProjectName}</h2>
                        {/* --- Download Button --- */}
                        <Button
                            variant="outline"
                            size="sm"
-                           onClick={handleDownloadResolved}
-                           disabled={isDownloadingResolved || !selectedProjectId || resolvedArticles.length === 0}
+                           onClick={handleDownloadFinalized}
+                           disabled={isDownloadingFinalized || !selectedProjectId || finalizedArticles.length === 0}
                        >
-                          {isDownloadingResolved ? (
+                          {isDownloadingFinalized ? (
                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                           ) : (
                              <Download className="mr-2 h-4 w-4" />
                           )}
-                          Download Resolved Data
+                          Download Finalized Data (.txt)
                        </Button>
                        {/* ----------------------- */}
                    </div>
                     {/* Display download error */}
-                    {downloadResolvedError && (
+                    {downloadFinalizedError && (
                         <Alert variant="destructive" className="mb-4">
                            <AlertTitle>Download Error</AlertTitle>
-                           <AlertDescription>{downloadResolvedError}</AlertDescription>
+                           <AlertDescription>{downloadFinalizedError}</AlertDescription>
                         </Alert>
                     )}
 
-                   {resolvedArticles.length > 0 ? (
-                     <div className="space-y-4">
-                       {resolvedArticles.map(article => {
-                           // Determine color based on decision
+                   {finalizedArticles.length > 0 ? (
+                     <div className="space-y-4 max-h-[600px] overflow-y-auto pr-2">
+                       {finalizedArticles.map(article => {
                            let decisionColor = 'text-gray-700';
-                           if (article.resolved_decision === 'include') decisionColor = 'text-green-700';
-                           else if (article.resolved_decision === 'exclude') decisionColor = 'text-red-700';
-                           else if (article.resolved_decision === 'maybe') decisionColor = 'text-yellow-700';
+                           if (article.final_decision === 'include') decisionColor = 'text-green-700';
+                           else if (article.final_decision === 'exclude') decisionColor = 'text-red-700';
+                           else if (article.final_decision === 'maybe') decisionColor = 'text-yellow-700';
 
-                           // --- Look up in userEmailMap (now from state) ---
-                           const resolverDisplay = article.resolved_by ? (userEmailMap.get(article.resolved_by) || `User ID: ${article.resolved_by.substring(0, 8)}...`) : 'Unknown';
-                           // ----------------------------------------------------
+                           const resolverDisplay = article.resolver_id ? (userEmailMap.get(article.resolver_id) || `User ID: ${article.resolver_id.substring(0, 8)}...`) : 'Unanimous';
 
                            return (
-                             <Card key={article.id} className="border-l-4 border-blue-500">
+                             <Card key={article.id} className="border-l-4 border-green-500">
                                 <CardHeader className="pb-2">
                                    <div className="flex justify-between items-start">
                                         <div>
@@ -771,13 +750,13 @@ export default function ReviewInterface() {
                                         </div>
                                         <div className="text-right flex-shrink-0 ml-4">
                                              <p className={`text-lg font-bold ${decisionColor}`}>
-                                                Final: {article.resolved_decision.charAt(0).toUpperCase() + article.resolved_decision.slice(1)}
+                                                Final: {article.final_decision.charAt(0).toUpperCase() + article.final_decision.slice(1)}
                                              </p>
                                              <p className="text-xs text-muted-foreground mt-1">
-                                                 Resolved by: {resolverDisplay} {/* Uses map from state */}
+                                                 By: {resolverDisplay}
                                              </p>
                                              <p className="text-xs text-muted-foreground">
-                                                 On: {new Date(article.resolved_at).toLocaleString()}
+                                                 On: {new Date(article.finalized_at).toLocaleString()}
                                              </p>
                                         </div>
                                    </div>
@@ -788,11 +767,11 @@ export default function ReviewInterface() {
                      </div>
                    ) : (
                      <p className="text-center text-muted-foreground mt-4">
-                       No conflicts have been resolved for this project yet.
+                       No articles have reached a final decision (resolved or unanimous) yet.
                      </p>
                    )}
                 </section>
-                {/* === End Resolved Articles Section === */}
+                {/* === End Finalized Articles Section === */}
               </>
             )}
 
