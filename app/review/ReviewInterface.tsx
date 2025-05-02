@@ -39,11 +39,12 @@ interface AgentReviewStats {
 
 // Type for a single decision linked to a user OR an agent
 export interface Decision {
-  user_id: string | null; // Allow null
-  agent_id: string | null; // Add agent_id, allow null
+  user_id: string | null;
+  agent_id: string | null;
   decision: 'include' | 'exclude' | 'maybe';
-  user_email?: string; // Optional: To store user email/identifier
-  agent_name?: string; // Optional: To store agent name
+  exclusion_reason?: string | null;
+  user_email?: string;
+  agent_name?: string;
 }
 
 // Type for an article on the review page, including its decisions and conflict status
@@ -69,6 +70,8 @@ interface FinalizedArticle {
     final_decision: ScreeningDecision;
     finalized_at: string;
     resolver_id: string | null;
+    finalizing_agent_id: string | null;
+    final_exclusion_reason: string | null;
     original_decisions: Decision[];
 }
 // ---------------------------------------------
@@ -88,6 +91,7 @@ export default function ReviewInterface() {
   const [error, setError] = useState<string | null>(null);
   const [finalizedArticles, setFinalizedArticles] = useState<FinalizedArticle[]>([]); // <-- NEW State
   const [userEmailMap, setUserEmailMap] = useState<Map<string, string>>(new Map()); // <-- NEW State for the map
+  const [agentNameMap, setAgentNameMap] = useState<Map<string, string>>(new Map());
 
   // --- Re-add Modal State ---
   const [isResolveModalOpen, setIsResolveModalOpen] = useState(false);
@@ -236,7 +240,7 @@ export default function ReviewInterface() {
             else { profiles?.forEach(p => { if (p.id && p.email) { localUserEmailMap.set(p.id, p.email); } }); }
         }
 
-        const agentNameMap = new Map<string, string>();
+        const localAgentNameMap = new Map<string, string>();
         if (agentIds.length > 0) {
              console.log("Fetching agent names for IDs:", agentIds);
             const { data: agents, error: agentError } = await supabase
@@ -244,10 +248,10 @@ export default function ReviewInterface() {
                 .select('id, name')
                 .in('id', agentIds);
             if (agentError) { console.warn("Could not fetch agent names:", agentError.message); }
-            else { agents?.forEach(a => { if (a.id && a.name) { agentNameMap.set(a.id, a.name); } }); }
+            else { agents?.forEach(a => { if (a.id && a.name) { localAgentNameMap.set(a.id, a.name); } }); }
         }
-        console.log("Local User Email Map:", localUserEmailMap); // Log local map
-        console.log("Agent Name Map:", agentNameMap);
+        console.log("Local User Email Map:", localUserEmailMap);
+        console.log("Local Agent Name Map:", localAgentNameMap);
         // --------------------------------
 
         // 3. Process for User Stats, AGENT Stats, AND Article Decisions
@@ -275,7 +279,7 @@ export default function ReviewInterface() {
             // --- NEW: Update Agent Stats (Only if agent_id is present) ---
             else if (rawDecision.agent_id) {
                 const agentId = rawDecision.agent_id;
-                const agentIdentifier = agentNameMap.get(agentId) || agentId; // Use name or ID
+                const agentIdentifier = localAgentNameMap.get(agentId) || agentId; // Use name or ID
                 if (!statsByAgent.has(agentId)) {
                     statsByAgent.set(agentId, { agentId, agentName: agentIdentifier, includeCount: 0, maybeCount: 0, excludeCount: 0, totalScreened: 0 });
                 }
@@ -295,7 +299,7 @@ export default function ReviewInterface() {
                  // Look up email if user_id exists
                  user_email: rawDecision.user_id ? (localUserEmailMap.get(rawDecision.user_id) || undefined) : undefined,
                  // Look up agent name if agent_id exists
-                 agent_name: rawDecision.agent_id ? (agentNameMap.get(rawDecision.agent_id) || undefined) : undefined,
+                 agent_name: rawDecision.agent_id ? (localAgentNameMap.get(rawDecision.agent_id) || undefined) : undefined,
             };
             const existingDecisions = decisionsByArticle.get(articleId) || [];
             decisionsByArticle.set(articleId, [...existingDecisions, decisionForArticle]);
@@ -305,6 +309,7 @@ export default function ReviewInterface() {
         setUserStats(Array.from(statsByUser.values()));
         setAgentStats(Array.from(statsByAgent.values())); // <-- Set agent stats state
         setUserEmailMap(localUserEmailMap); // <-- Store the populated map in state
+        setAgentNameMap(localAgentNameMap); // <<< Store agent names in state
         // --------------------------------
 
         // --- Step 2: Fetch ONLY Conflicting Articles using RPC ---
@@ -343,7 +348,7 @@ export default function ReviewInterface() {
         // --- End of RPC processing ---
 
         // --- Fetch Finalized Articles via RPC ---
-        console.log("Fetching finalized articles via RPC...");
+        console.log("Fetching finalized articles via RPC (v5 expected)...");
         const { data: finalizedData, error: finalizedRpcError } = await supabase
             .rpc('get_finalized_articles', { p_project_id: selectedProjectId });
 
@@ -353,7 +358,7 @@ export default function ReviewInterface() {
             setFinalizedArticles([]);
         } else {
              console.log(`RPC returned ${finalizedData?.length || 0} finalized articles.`);
-             // --- Data now matches the FinalizedArticle interface ---
+             // Data should now match the updated FinalizedArticle interface
              setFinalizedArticles(finalizedData as FinalizedArticle[] || []);
         }
 
@@ -397,8 +402,9 @@ export default function ReviewInterface() {
     setFinalizedArticles([]);
     setConflictCount(0);
     setError(null);
-    setUserEmailMap(new Map()); // <-- Clear map on project change
-    setDownloadFinalizedError(null); // <-- Clear download error
+    setUserEmailMap(new Map());
+    setAgentNameMap(new Map()); // <<< Clear agent map on project change
+    setDownloadFinalizedError(null);
   };
 
   // --- Re-implement handler to OPEN the Modal ---
@@ -733,27 +739,47 @@ export default function ReviewInterface() {
                    {finalizedArticles.length > 0 ? (
                      <div className="space-y-4 max-h-[600px] overflow-y-auto pr-2">
                        {finalizedArticles.map(article => {
+                           // Determine final decision color
                            let decisionColor = 'text-gray-700';
                            if (article.final_decision === 'include') decisionColor = 'text-green-700';
                            else if (article.final_decision === 'exclude') decisionColor = 'text-red-700';
                            else if (article.final_decision === 'maybe') decisionColor = 'text-yellow-700';
 
-                           const resolverDisplay = article.resolver_id ? (userEmailMap.get(article.resolver_id) || `User ID: ${article.resolver_id.substring(0, 8)}...`) : 'Unanimous';
+                           // --- Determine Resolver/Finalizer Display Name ---
+                           let finalizerDisplay = 'Unanimous / System'; // Default
+                           if (article.resolver_id) {
+                               // Resolved by a user
+                               finalizerDisplay = userEmailMap.get(article.resolver_id) || `User (${article.resolver_id.substring(0, 8)}...)`;
+                           } else if (article.finalizing_agent_id) {
+                               // Unanimous decision by an agent
+                               finalizerDisplay = agentNameMap.get(article.finalizing_agent_id) || `Agent (${article.finalizing_agent_id.substring(0, 8)}...)`;
+                           }
+                           // Potential TODO: Handle unanimous user decisions if needed
+                           // -------------------------------------------------
 
                            return (
                              <Card key={article.id} className="border-l-4 border-green-500">
                                 <CardHeader className="pb-2">
-                                   <div className="flex justify-between items-start">
-                                        <div>
+                                   <div className="flex justify-between items-start gap-4"> {/* Added gap */}
+                                        {/* Left Side: Title/PMID/Reason */}
+                                        <div className="flex-grow">
                                             <CardTitle className="text-lg">{article.title}</CardTitle>
                                             <CardDescription>PMID: {article.pmid}</CardDescription>
+                                             {/* --- Display Exclusion Reason --- */}
+                                             {article.final_decision === 'exclude' && article.final_exclusion_reason && !article.resolver_id && (
+                                                 <p className="text-xs text-red-600 mt-1 italic">
+                                                     Reason: {article.final_exclusion_reason.replace(/_/g, ' ')}
+                                                 </p>
+                                             )}
+                                             {/* ---------------------------- */}
                                         </div>
-                                        <div className="text-right flex-shrink-0 ml-4">
+                                        {/* Right Side: Decision/Finalizer/Time */}
+                                        <div className="text-right flex-shrink-0">
                                              <p className={`text-lg font-bold ${decisionColor}`}>
                                                 Final: {article.final_decision.charAt(0).toUpperCase() + article.final_decision.slice(1)}
                                              </p>
                                              <p className="text-xs text-muted-foreground mt-1">
-                                                 By: {resolverDisplay}
+                                                 By: {finalizerDisplay}
                                              </p>
                                              <p className="text-xs text-muted-foreground">
                                                  On: {new Date(article.finalized_at).toLocaleString()}
@@ -761,6 +787,8 @@ export default function ReviewInterface() {
                                         </div>
                                    </div>
                                 </CardHeader>
+                                {/* Optional: Expand to show original decisions */}
+                                {/* <CardContent> ... </CardContent> */}
                              </Card>
                            );
                        })}

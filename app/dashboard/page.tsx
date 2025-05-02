@@ -10,7 +10,7 @@ import { CreateProjectDialog } from '@/components/CreateProjectDialog'; // Impor
 import { InviteUserDialog } from '@/components/InviteUserDialog';   // Import Invite dialog
 import { Button } from '@/components/ui/button'; // Import Button
 import { ArticleDropzone } from '@/components/ArticleDropzone'; // <-- Import Dropzone
-import { DecisionDropzone, ParsedDecision } from '@/components/DecisionDropzone'; // <-- Import DecisionDropzone
+import { DecisionDropzone } from '@/components/DecisionDropzone'; // <-- Import DecisionDropzone
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"; // For messages
 import { Loader2, Download, UploadCloud } from "lucide-react"; // Added Download
 import Link from 'next/link'; // <-- Import Link for navigation
@@ -91,6 +91,57 @@ interface AgentScreeningStats extends ScreeningStats {
     agentName: string;
 }
 
+// Ensure exclusionReasons are defined or imported
+const exclusionReasons = [
+    "off topic", "review/survey", "wrong imaging modality",
+    "wrong application focus", "animal/pre-clinical", "abstract/editorial/letter",
+    "insufficient technical detail", "technique mismatch", "other"
+];
+
+// Helper to map YES/NO/MAYBE and potential reasons (v3 - More Robust Parsing)
+const mapDecisionAndReason = (decisionInput: string): { decision: ScreeningDecision | null; reason: string | null } => {
+    const trimmedInput = decisionInput.trim();
+    const upperInput = trimmedInput.toUpperCase(); // Work with uppercase for comparisons
+
+    console.log(`mapDecisionAndReason received input: "${trimmedInput}" (Upper: "${upperInput}")`);
+
+    // --- Check for "NO:" first, as it includes a reason ---
+    const noReasonIndex = upperInput.indexOf("NO:");
+    if (noReasonIndex !== -1) {
+        // Extract reason text after "NO:"
+        // Use original case string (trimmedInput) for substring to preserve reason case if needed,
+        // but generally lowercase is safer for matching.
+        let reason = trimmedInput.substring(noReasonIndex + 3).trim().toLowerCase();
+        console.log(`  -> Detected "NO:", extracted raw reason: "${reason}"`);
+
+        // Normalize if not a standard reason
+        if (!exclusionReasons.includes(reason)) {
+            console.warn(`  -> Unknown exclusion reason "${reason}". Normalizing to "other".`);
+            reason = "other";
+        } else {
+             console.log(`  -> Reason "${reason}" is valid.`);
+        }
+        return { decision: 'exclude', reason: reason };
+    }
+
+    // --- Check for core decision words (YES/INCLUDE, NO, MAYBE) ---
+    // Look for the words anywhere in the uppercase string
+    if (upperInput.includes("YES") || upperInput.includes("INCLUDE")) {
+        console.log(`  -> Detected "YES" or "INCLUDE" within "${trimmedInput}"`);
+        return { decision: 'include', reason: null };
+    } else if (upperInput.includes("NO")) { // Check plain "NO" after "NO:"
+        console.log(`  -> Detected "NO" within "${trimmedInput}"`);
+        return { decision: 'exclude', reason: null };
+    } else if (upperInput.includes("MAYBE")) {
+        console.log(`  -> Detected "MAYBE" within "${trimmedInput}"`);
+        return { decision: 'maybe', reason: null };
+    } else {
+        // If none of the above patterns match
+        console.error(`  -> Unknown decision format after checks: "${trimmedInput}"`);
+        return { decision: null, reason: null }; // Invalid format
+    }
+};
+
 export default function DashboardPage() {
   const [user, setUser] = useState<User | null>(null);
   const [projects, setProjects] = useState<Project[]>([]);
@@ -124,7 +175,6 @@ export default function DashboardPage() {
   const [isUploading, setIsUploading] = useState(false); // Saving AI decisions
   const [uploadMessage, setUploadMessage] = useState<string | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
-  const [parsedDecisions, setParsedDecisions] = useState<ParsedDecision[]>([]);
   const [uploadedFileName, setUploadedFileName] = useState<string | null>(null);
 
   // --- NEW State for AI Agents ---
@@ -137,6 +187,12 @@ export default function DashboardPage() {
   const [agentStats, setAgentStats] = useState<AgentScreeningStats[]>([]);
   const [loadingAgentStats, setLoadingAgentStats] = useState(false);
   const [agentStatsError, setAgentStatsError] = useState<string | null>(null);
+
+  // --- Add state for saving indicator if not present ---
+  const [isSaving, setIsSaving] = useState(false); // Or rename if you already have one like isUploadingDecisions
+  const [uploadDecisionProgress, setUploadDecisionProgress] = useState(0);
+  const [uploadDecisionError, setUploadDecisionError] = useState<string | null>(null);
+  const [isUploadingDecisions, setIsUploadingDecisions] = useState(false); // Assuming this exists
 
   // --- Fetch User Projects ---
   const fetchProjects = useCallback(async (selectFirst = false) => {
@@ -438,7 +494,7 @@ export default function DashboardPage() {
 
         if (event === 'SIGNED_OUT') {
            // Clear everything on sign out
-           setError(null); setProjects([]); setSelectedProjectId(null); setParsedTxtArticles([]); setScreeningStats(null); setPendingInvitations([]); setInvitationError(null); setParsedDecisions([]);
+           setError(null); setProjects([]); setSelectedProjectId(null); setParsedTxtArticles([]); setScreeningStats(null); setPendingInvitations([]); setInvitationError(null); setUploadedFileName(null);
         } else if (event === 'SIGNED_IN' && currentUser && currentEmail) {
            // Refetch projects and invitations on sign in
            fetchProjects(true);
@@ -467,7 +523,7 @@ export default function DashboardPage() {
     setSelectedProjectId(projectId);
     // Clear file processing state and parsed articles/decisions
     setProcessingTxtMessage(null); setProcessingTxtError(null); setIsProcessingTxt(false); setParsedTxtArticles([]);
-    setUploadMessage(null); setUploadError(null); setIsUploading(false); setParsedDecisions([]); setUploadedFileName(null);
+    setUploadMessage(null); setUploadError(null); setIsUploading(false); setUploadedFileName(null);
     setDownloadError(null); // Clear download error too
     // Stats will be cleared/refetched by the useEffect hook above
     setProjectAgents([]);
@@ -645,18 +701,6 @@ export default function DashboardPage() {
       }
   }, [selectedProjectId, projects]);
 
-  // --- NEW: Handle Parsed AI Decisions ---
-  const handleAiDecisionsParsed = useCallback((decisions: ParsedDecision[], fileName: string) => {
-      console.log(`Received ${decisions.length} parsed decisions from file: ${fileName}`);
-      setParsedDecisions(decisions);
-      setUploadedFileName(fileName);
-      setUploadError(null); // Clear previous upload errors
-      setUploadMessage(null); // Clear previous upload messages
-      if (decisions.length > 0) {
-          setUploadMessage(`${decisions.length} decisions parsed from ${fileName}. Ready to save.`);
-      }
-  }, []);
-
   // --- NEW: Fetch Statistics for All AI Agents in Project (with Batching for Decisions) ---
   const fetchAgentStats = useCallback(async (projectId: string | null) => {
     if (!projectId) {
@@ -769,85 +813,178 @@ export default function DashboardPage() {
   }, []); // Depends only on supabase client
 
   // --- NEW: Save Parsed AI Decisions to Supabase (Restored Batch Logic) ---
-  const handleSaveAiDecisions = useCallback(async () => {
-      // Use the selected AI agent ID from state
-      if (!selectedProjectId || !selectedAgentId || parsedDecisions.length === 0) {
-          setUploadError("Project, AI Agent must be selected, and decisions must be parsed.");
-          return;
-      }
+  const handleSaveAiDecisions = useCallback(async (fileContent: string, uploadedFileName: string) => {
+    if (typeof fileContent !== 'string') { /* ... type check ... */ return; }
+    console.log(`handleSaveAiDecisions processing file: ${uploadedFileName}`);
+    if (!selectedProjectId || !selectedAgentId) { /* ... checks ... */ return; }
+    if (!fileContent) { /* ... check ... */ return; }
 
-      const agentNameToLog = projectAgents.find(a => a.id === selectedAgentId)?.name || selectedAgentId;
-      console.log(`Saving ${parsedDecisions.length} AI decisions for agent '${agentNameToLog}' (${selectedAgentId}) to project ${selectedProjectId}...`);
-      setIsUploading(true);
-      setUploadMessage(`Saving ${parsedDecisions.length} decisions...`);
-      setUploadError(null);
+    // Reset state
+    setIsUploadingDecisions(true);
+    setIsSaving(true);
+    setUploadDecisionProgress(0);
+    setUploadError(null);
+    setUploadMessage(`Processing file: ${uploadedFileName}...`);
 
-      // Prepare data using the selectedAgentId for the new agent_id column
-      const decisionsToSave: ScreeningDecisionSaveData[] = parsedDecisions.map(d => ({
-          project_id: selectedProjectId,
-          article_id: d.article_id,
-          user_id: null, // <-- Explicitly set user_id to null for AI decisions
-          agent_id: selectedAgentId, // <-- Use selected agent ID for agent_id
-          decision: d.decision,
-      }));
+    const lines = fileContent.trim().split('\n');
+    const decisionsToInsert: Array<{
+        project_id: string;
+        article_id: string;
+        agent_id: string;
+        decision: ScreeningDecision;
+        exclusion_reason: string | null;
+    }> = [];
+    const errors: string[] = [];
 
-      const BATCH_SIZE = 500; // Process in batches
-      let savedCount = 0;
-      let errorOccurred = false;
-      let batchErrors: string[] = [];
+    console.log(`--- Parsing ${lines.length} lines for AI agent ${selectedAgentId} ---`);
 
-      try {
-          // --- Restore the loop to process in batches ---
-          for (let i = 0; i < decisionsToSave.length; i += BATCH_SIZE) {
-              const batch = decisionsToSave.slice(i, i + BATCH_SIZE); // Get the current batch
-              const batchNumber = Math.floor(i / BATCH_SIZE) + 1;
-              setUploadMessage(`Saving decision batch ${batchNumber}...`);
+    for (let i = 0; i < lines.length; i++) {
+        const originalLine = lines[i]; // Keep original for logging
+        const line = originalLine.trim();
+        if (!line) {
+            console.log(`Line ${i + 1}: Skipped empty line.`);
+            continue;
+        }
 
-              // Using simple insert for safety
-               const { error: saveError } = await supabase
-                  .from('screening_decisions')
-                  .insert(batch); // <-- Insert the batch
+        console.log(`Processing Line ${i + 1}: "${line}"`);
 
-              if (saveError) {
-                  console.error(`Error saving decision batch ${batchNumber} (index ${i}):`, saveError);
-                  let specificErrorMsg = saveError.message;
+        // --- Revised Splitting Logic ---
+        const colonIndex = line.indexOf(':');
+        let articleId: string | null = null;
+        let decisionInput: string | null = null;
 
-                  // Check for specific FK violation on article_id
-                  if (saveError.code === '23503' && saveError.message.includes('screening_decisions_article_id_fkey')) {
-                      specificErrorMsg = `Batch ${batchNumber}: Article ID not found in the project's articles table. Ensure articles were imported correctly first. (Details: ${saveError.message})`;
-                  } else {
-                     specificErrorMsg = `Batch ${batchNumber}: ${saveError.message}`;
-                  }
+        if (colonIndex === -1) {
+            const errorMsg = `Line ${i + 1}: Invalid format. No colon found. Line: "${originalLine}"`;
+            console.error(errorMsg);
+            errors.push(errorMsg);
+            continue; // Skip line
+        }
 
-                  batchErrors.push(specificErrorMsg);
-                  errorOccurred = true; // Mark error but continue trying other batches
-              } else {
-                  savedCount += batch.length; // Count successful saves from the batch
-              }
-          } // --- End of loop ---
+        articleId = line.substring(0, colonIndex).trim();
+        decisionInput = line.substring(colonIndex + 1).trim(); // Get everything after the first colon
 
-          if (!errorOccurred) {
-              setUploadMessage(`Successfully saved ${savedCount} decisions for agent ${agentNameToLog}.`);
-              setParsedDecisions([]); // Clear the list on full success
-              setUploadedFileName(null); // Clear file name on full success
-              // Refresh agent stats after successful upload
-              await fetchAgentStats(selectedProjectId);
-          } else {
-              const errorSummary = batchErrors.join('; ');
-              setUploadError(`Finished with errors saving for agent ${agentNameToLog}. ${savedCount} decisions may have been saved. Errors: ${errorSummary}`);
-              setUploadMessage(null);
-              // Keep parsedDecisions so user might be able to inspect/retry if desired
-          }
+        if (!articleId) {
+            const errorMsg = `Line ${i + 1}: Invalid format. UUID part is empty. Line: "${originalLine}"`;
+            console.error(errorMsg);
+            errors.push(errorMsg);
+            continue; // Skip line
+        }
+        if (!decisionInput) {
+            const errorMsg = `Line ${i + 1}: Invalid format. Decision part is empty. Line: "${originalLine}"`;
+            console.error(errorMsg);
+            errors.push(errorMsg);
+            continue; // Skip line
+        }
+        // --- End Revised Splitting Logic ---
 
-      } catch (err: any) {
-          console.error(`Unhandled error saving AI decisions for agent ${agentNameToLog}:`, err);
-          setUploadError(err.message || "An unknown error occurred while saving AI decisions.");
-          setUploadMessage(null);
-      } finally {
-          setIsUploading(false);
-      }
-  // Ensure all dependencies are listed
-  }, [parsedDecisions, selectedProjectId, selectedAgentId, projectAgents, fetchScreeningStats, fetchAgentStats]);
+        console.log(`  -> Split: UUID="${articleId}", DecisionInput="${decisionInput}"`);
+
+        // Validate UUID format
+        if (!/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(articleId)) {
+             const errorMsg = `Line ${i + 1}: Invalid UUID format "${articleId}"`;
+             console.error(errorMsg);
+             errors.push(errorMsg);
+             continue;
+        }
+
+        // Use the helper function to parse decision and reason
+        const { decision, reason } = mapDecisionAndReason(decisionInput); // Pass the extracted decision part
+
+        if (decision === null) {
+            const errorMsg = `Line ${i + 1}: Could not map decision from input "${decisionInput}". Original line: "${originalLine}"`;
+            console.error(errorMsg);
+            errors.push(errorMsg);
+            continue; // Skip this invalid decision
+        }
+
+        const decisionObject = {
+            project_id: selectedProjectId,
+            article_id: articleId,
+            agent_id: selectedAgentId,
+            decision: decision,
+            exclusion_reason: reason
+        };
+        console.log(`  -> Valid decision parsed. Prepared for insert:`, decisionObject);
+        decisionsToInsert.push(decisionObject);
+    }
+    console.log(`--- Finished Parsing. Found ${errors.length} errors. Preparing to insert ${decisionsToInsert.length} valid decisions. ---`);
+
+
+    if (errors.length > 0 && decisionsToInsert.length === 0) { // If ONLY errors occurred
+       setUploadError(`Failed to parse any valid lines. Found ${errors.length} errors (see console). Please check file format near reported lines.`);
+       setIsUploadingDecisions(false);
+       setIsSaving(false);
+       setUploadDecisionProgress(0);
+       setUploadMessage(null);
+       return;
+    }
+    // Optional: Handle cases where some lines parsed, some failed
+     if (errors.length > 0 && decisionsToInsert.length > 0) {
+         console.warn(`Parsed ${decisionsToInsert.length} decisions, but encountered ${errors.length} errors (see console). Only valid decisions will be saved.`);
+         // Decide if you want to proceed or force user to fix errors
+         // setUploadError(`Warning: ${errors.length} lines could not be parsed (see console). Saving ${decisionsToInsert.length} valid decisions.`); // Example warning
+     }
+
+
+    if (decisionsToInsert.length === 0) { // Should be caught above, but double-check
+        setUploadError("No valid decisions found after parsing.");
+        setIsUploadingDecisions(false);
+        setIsSaving(false);
+        setUploadMessage(null);
+        return;
+    }
+
+    setUploadMessage(`Parsed ${decisionsToInsert.length} decisions. Saving to database...`);
+
+    // ... (rest of the saving logic: batch insert, try/catch, finally) ...
+    // Ensure the try/catch/finally block for Supabase insert is present
+    let insertedCount = 0;
+    let updatedCount = 0; // Keep track of updates if needed
+    try {
+        const BATCH_SIZE = 500;
+        for (let i = 0; i < decisionsToInsert.length; i += BATCH_SIZE) {
+            const batch = decisionsToInsert.slice(i, i + BATCH_SIZE);
+            console.log(`Upserting batch ${Math.floor(i / BATCH_SIZE) + 1}...`);
+
+            // *** CHANGE insert TO upsert ***
+            const { error: upsertError, data: upsertData } = await supabase
+                .from('screening_decisions')
+                .upsert(batch, {
+                    onConflict: 'project_id, article_id, agent_id', // Specify columns for conflict detection
+                    // ignoreDuplicates: false // Default is false, ensures updates happen
+                });
+
+            if (upsertError) throw upsertError; // Throw error to be caught below
+
+            // Supabase upsert doesn't easily tell inserts vs updates in the response.
+            // We assume the operation succeeded for the batch size.
+            insertedCount += batch.length; // Count all processed in batch for progress
+            setUploadDecisionProgress((insertedCount / decisionsToInsert.length) * 100);
+        }
+
+         console.log("Successfully upserted all AI decisions.");
+         setUploadDecisionProgress(100);
+         // Updated message to reflect upsert
+         setUploadMessage(`Successfully processed (inserted/updated) ${insertedCount} decisions from ${uploadedFileName}.`);
+         fetchAgentStats(selectedProjectId); // Refresh stats
+
+    } catch (dbError: any) {
+         console.error("Database error during AI decision upsert:", dbError);
+         let userFriendlyError = `Database error processing batch: ${dbError.message}`;
+         if (dbError.code === '42P10' || dbError.message.includes('constraint') && dbError.message.includes('does not exist')) {
+             userFriendlyError = `Database Error: The unique constraint on (project_id, article_id, agent_id) might be missing or misspelled in the 'screening_decisions' table. Please add it via the Supabase dashboard. (Details: ${dbError.message})`;
+         }
+         // ... other specific DB error code handling ...
+         setUploadError(userFriendlyError);
+         setUploadMessage(null);
+         setUploadDecisionProgress( (insertedCount / decisionsToInsert.length) * 100 );
+    } finally {
+        setIsUploadingDecisions(false);
+        setIsSaving(false);
+    }
+
+
+}, [selectedProjectId, selectedAgentId, supabase, fetchAgentStats, isSaving]);
 
   // --- NEW: Fetch AI Agents for Project ---
   const fetchProjectAgents = useCallback(async (projectId: string | null) => {
@@ -1090,39 +1227,30 @@ export default function DashboardPage() {
                  {/* AI Decision Upload Dropzone (existing) */}
                   <DecisionDropzone
                       projectId={selectedProjectId}
-                      onDecisionsParsed={handleAiDecisionsParsed}
-                      // Disable if no agent is selected OR if currently uploading
-                      disabled={isUploading || !selectedAgentId || loadingAgents}
-                      className={(!selectedAgentId || loadingAgents) ? 'opacity-60' : ''}
+                      onFileUpload={handleSaveAiDecisions}
+                      disabled={!selectedProjectId || !selectedAgentId || isUploadingDecisions || isSaving}
                   />
-                  {/* Add tooltip or text indicating agent must be selected */}
+                  {/* Tooltip/message if agent not selected */}
                   {!selectedAgentId && !loadingAgents && projectAgents.length > 0 && (
                       <p className="text-xs text-muted-foreground mt-1">Please select an AI agent above before uploading.</p>
                   )}
 
-                  {/* Display Upload Processing Messages (existing) */}
-                  {(uploadMessage || uploadError) && (
+                  {/* Display Upload Processing/Error Messages */}
+                  {/* Show progress bar during upload */}
+                  {(isUploadingDecisions || isSaving) && uploadDecisionProgress > 0 && (
+                       <div className="mt-4">
+                           <Progress value={uploadDecisionProgress} className="w-full h-2" />
+                           <p className="text-sm text-muted-foreground text-center mt-1">{uploadMessage || "Processing..."}</p>
+                       </div>
+                  )}
+                  {/* Show final message/error *after* processing is done */}
+                   {!isUploadingDecisions && !isSaving && (uploadMessage || uploadError) && (
                        <Alert variant={uploadError ? "destructive" : "default"} className="mt-4">
                             {uploadError && <AlertTitle>Upload Error</AlertTitle>}
                             <AlertDescription>{uploadError || uploadMessage}</AlertDescription>
                        </Alert>
                    )}
 
-                   {/* Save AI Decisions Button (disable if no agent selected) */}
-                   {parsedDecisions.length > 0 && !isUploading && (
-                        <div className="mt-4 text-right">
-                             <Button onClick={handleSaveAiDecisions} disabled={isUploading || !selectedAgentId}>
-                                 Save {parsedDecisions.length} Decisions for Agent {/* Add agent name here if desired */}
-                             </Button>
-                         </div>
-                     )}
-                     {isUploading && (
-                         <div className="mt-4 text-right">
-                              <Button disabled>
-                                 <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Saving Decisions...
-                              </Button>
-                          </div>
-                      )}
               </section>
 
               <Separator />

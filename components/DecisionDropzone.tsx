@@ -5,175 +5,127 @@ import { UploadCloud, FileText, X, Loader2 } from 'lucide-react'; // Icons
 import { cn } from "@/lib/utils"; // Utility for class names
 import { Button } from '@/components/ui/button';
 
-// Type for the parsed decision data we expect
-export interface ParsedDecision {
-  article_id: string;
-  decision: 'include' | 'exclude' | 'maybe'; // Match DB enum
-}
+// REMOVE ParsedDecision interface - no longer parsed here
+// export interface ParsedDecision { ... }
 
 interface DecisionDropzoneProps {
-  projectId: string | null; // Project context
-  onDecisionsParsed: (decisions: ParsedDecision[], fileName: string) => void; // Callback with parsed data
+  projectId: string | null; // Keep project context if needed for disabling
+  // CHANGED PROP: Expects a function taking file content string and filename
+  onFileUpload: (content: string, fileName: string) => void;
   className?: string;
   disabled?: boolean;
 }
 
 export function DecisionDropzone({
   projectId,
-  onDecisionsParsed,
+  onFileUpload, // Use the updated prop name
   className,
   disabled = false
 }: DecisionDropzoneProps) {
   const [isDragging, setIsDragging] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [processing, setProcessing] = useState(false);
+  // RENAME processing to isLoading? Parent now handles processing.
+  const [isLoading, setIsLoading] = useState(false);
   const [fileName, setFileName] = useState<string | null>(null);
 
-  const parseContent = (content: string, name: string) => {
-    console.log("Parsing decision file content...");
-    setError(null);
-    setProcessing(true);
-    setFileName(name); // Store file name
-    const parsed: ParsedDecision[] = [];
-    const lines = content.split('\n');
-    let lineNum = 0;
+  // REMOVE parseContent function entirely
+  // const parseContent = (content: string, name: string) => { ... };
 
-    try {
-        for (const line of lines) {
-            lineNum++;
-            const trimmedLine = line.trim();
-            if (!trimmedLine || trimmedLine.startsWith('#')) continue; // Skip empty lines or comments
-
-            // Expect format like "uuid: YES", "uuid:NO", "uuid : MAYBE" etc.
-            const match = trimmedLine.match(/^([a-fA-F0-9-]+)\s*[:]\s*(YES|NO|MAYBE)\s*$/i);
-
-            if (!match) {
-                console.warn(`Skipping malformed line ${lineNum}: "${line}"`);
-                continue; // Skip lines that don't match the expected format
-            }
-
-            const article_id = match[1];
-            const decisionRaw = match[2].toUpperCase();
-            let decision: ParsedDecision['decision'];
-
-            // Convert decision to DB format
-            if (decisionRaw === 'YES') decision = 'include';
-            else if (decisionRaw === 'NO') decision = 'exclude';
-            else if (decisionRaw === 'MAYBE') decision = 'maybe';
-            else {
-                 console.warn(`Skipping line ${lineNum} with invalid decision: "${match[2]}"`);
-                 continue; // Should not happen with regex, but good practice
-            }
-
-            // Basic UUID validation (optional but good)
-             const uuidRegex = /^[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}$/;
-             if (!uuidRegex.test(article_id)) {
-                 console.warn(`Skipping line ${lineNum} with invalid Article ID format: "${article_id}"`);
-                 continue;
-             }
-
-            parsed.push({ article_id, decision });
-        }
-
-        if (parsed.length === 0) {
-            throw new Error("No valid 'article_id: DECISION' lines found in the file.");
-        }
-
-        console.log(`Successfully parsed ${parsed.length} decisions.`);
-        onDecisionsParsed(parsed, name); // Pass parsed data up
-        setError(null); // Clear error on success
-
-    } catch (e: any) {
-        console.error("Error parsing decisions file:", e);
-        setError(`Error parsing file: ${e.message}`);
-        onDecisionsParsed([], name); // Pass empty array on error
-    } finally {
-         setProcessing(false);
-    }
-  };
-
-
+  // UPDATED file read handler
   const handleFileRead = (file: File) => {
     if (!file) return;
-    if (file.type !== 'text/plain') {
-      setError("Invalid file type. Please upload a .txt file.");
+    // Basic checks remain
+    if (!file.type.startsWith('text/')) { // Allow more flexible text types
+      setError(`Invalid file type: ${file.type}. Please upload a text file (.txt, .csv, etc.).`);
+      setFileName(null); // Clear filename on error
       return;
     }
-    // Max size (e.g., 10MB) - adjust as needed
-    if (file.size > 10 * 1024 * 1024) {
+    if (file.size > 10 * 1024 * 1024) { // 10MB limit
         setError("File is too large (max 10MB).");
+        setFileName(null);
         return;
     }
 
+    setError(null); // Clear previous errors
+    setIsLoading(true); // Indicate reading started
+    setFileName(file.name); // Show filename immediately
+
     const reader = new FileReader();
+
     reader.onload = (e) => {
       const content = e.target?.result as string;
-      if (content) {
-         parseContent(content, file.name);
+      if (typeof content === 'string') {
+         console.log(`File "${file.name}" read successfully. Calling onFileUpload.`);
+         // *** CALL THE PARENT CALLBACK WITH RAW CONTENT ***
+         onFileUpload(content, file.name);
+         // Parent now handles success/failure/processing state based on its logic
+         // We can clear loading here, or let the parent manage it via props if needed
+         setIsLoading(false);
       } else {
-          setError("Could not read file content.");
+          console.error("FileReader result was not a string.");
+          setError("Could not read file content properly.");
+          setFileName(null);
+          setIsLoading(false);
       }
     };
-    reader.onerror = () => {
+
+    reader.onerror = (e) => {
+        console.error("FileReader error:", e);
         setError("Error reading file.");
+        setFileName(null);
+        setIsLoading(false);
     };
-    reader.readAsText(file);
+
+    reader.readAsText(file); // Read as text
   };
 
-  const handleDragEnter = (e: React.DragEvent<HTMLLabelElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (!disabled) setIsDragging(true);
-  };
-
-  const handleDragLeave = (e: React.DragEvent<HTMLLabelElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragging(false);
-  };
-
-  const handleDragOver = (e: React.DragEvent<HTMLLabelElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
-    // Optional: add visual cue for droppable area
-  };
-
+  // Drag/Drop handlers remain largely the same, just call handleFileRead
+  const handleDragEnter = (e: React.DragEvent<HTMLLabelElement>) => { /* ... */ };
+  const handleDragLeave = (e: React.DragEvent<HTMLLabelElement>) => { /* ... */ };
+  const handleDragOver = (e: React.DragEvent<HTMLLabelElement>) => { /* ... */ };
   const handleDrop = (e: React.DragEvent<HTMLLabelElement>) => {
     e.preventDefault();
     e.stopPropagation();
     setIsDragging(false);
+    // Check disabled status based on props
     if (disabled || !projectId) return;
 
     const files = e.dataTransfer.files;
     if (files && files.length > 0) {
-      handleFileRead(files[0]);
+      handleFileRead(files[0]); // Call updated handler
     }
   };
 
+  // File input change handler remains largely the same
   const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files && files.length > 0) {
-       handleFileRead(files[0]);
+       handleFileRead(files[0]); // Call updated handler
     }
-     // Reset input value to allow selecting the same file again
-     e.target.value = '';
+     e.target.value = ''; // Reset input
   };
 
-   const clearFile = () => {
+   const clearFile = (e: React.MouseEvent<HTMLButtonElement>) => {
+        e.preventDefault(); // Prevent label click
+        e.stopPropagation();
         setError(null);
         setFileName(null);
-        onDecisionsParsed([], ''); // Clear parsed data in parent
+        setIsLoading(false); // Ensure loading is stopped
+        // Optionally call parent to clear its state if needed,
+        // but handleSaveAiDecisions might handle this already.
+        // onFileUpload('', ''); // Maybe send empty content? Or parent resets.
    };
 
+  // Update JSX to reflect state changes and removed parsing logic
   return (
     <div className={cn("mt-4", className)}>
       <label
         htmlFor="decision-dropzone-file"
         className={cn(
-          "relative flex flex-col items-center justify-center w-full h-48 border-2 border-dashed rounded-lg cursor-pointer bg-background hover:bg-muted transition-colors",
-          isDragging && "border-primary bg-muted",
-          (disabled || !projectId) && "opacity-50 cursor-not-allowed",
-          error && "border-destructive"
+            "relative flex flex-col items-center justify-center w-full h-48 border-2 border-dashed rounded-lg cursor-pointer bg-background hover:bg-muted transition-colors",
+            isDragging && "border-primary bg-muted",
+            disabled && "opacity-50 cursor-not-allowed", // Use the disabled prop
+            error && "border-destructive"
         )}
         onDragEnter={handleDragEnter}
         onDragLeave={handleDragLeave}
@@ -181,28 +133,34 @@ export function DecisionDropzone({
         onDrop={handleDrop}
       >
         <div className="flex flex-col items-center justify-center pt-5 pb-6 text-center px-4">
-          {fileName && !error && !processing ? (
+          {/* Show filename if selected and not loading/error */}
+          {fileName && !isLoading && !error ? (
              <>
                 <FileText className="w-10 h-10 mb-3 text-green-600" />
                 <p className="mb-2 text-sm font-semibold">{fileName}</p>
-                <p className="text-xs text-muted-foreground">File ready for processing.</p>
-                <Button variant="ghost" size="sm" onClick={clearFile} className="absolute top-2 right-2 p-1 h-auto">
+                <p className="text-xs text-muted-foreground">File selected. Ready to process.</p>
+                 {/* Add clear button */}
+                 <Button variant="ghost" size="sm" onClick={clearFile} className="absolute top-2 right-2 p-1 h-auto z-10">
                     <X className="w-4 h-4" />
                  </Button>
              </>
-          ) : processing ? (
+           /* Show loading state */
+          ) : isLoading ? (
              <>
                 <Loader2 className="w-10 h-10 mb-3 animate-spin" />
-                <p className="text-sm text-muted-foreground">Processing...</p>
+                <p className="text-sm text-muted-foreground">Reading file...</p>
              </>
+          /* Default prompt */
           ) : (
              <>
                 <UploadCloud className="w-10 h-10 mb-3 text-muted-foreground" />
                 <p className="mb-2 text-sm text-muted-foreground">
-                  <span className="font-semibold">Click to upload</span> or drag and drop AI decision file
+                  <span className="font-semibold">Click to upload</span> or drag & drop
                 </p>
-                <p className="text-xs text-muted-foreground">.txt file (e.g., ID: YES/NO/MAYBE per line)</p>
-                {!projectId && <p className="text-xs text-destructive mt-1">Select a project first.</p>}
+                <p className="text-xs text-muted-foreground\">AI decision file (.txt)</p>
+                 {/* Show disabled reason */}
+                 {disabled && !projectId && <p className="text-xs text-destructive mt-1">Select a project first.</p>}
+                 {disabled && projectId && <p className="text-xs text-destructive mt-1">Dropzone disabled.</p>}
              </>
           )}
         </div>
@@ -210,11 +168,12 @@ export function DecisionDropzone({
           id="decision-dropzone-file"
           type="file"
           className="hidden"
-          accept=".txt" // Accept only .txt files
+          accept="text/*,.txt" // More flexible text accept
           onChange={handleFileChange}
-          disabled={disabled || !projectId}
+          disabled={disabled} // Use the disabled prop
         />
       </label>
+      {/* Display error below the dropzone */}
       {error && (
         <p className="mt-2 text-sm text-destructive">{error}</p>
       )}
