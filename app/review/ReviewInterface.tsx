@@ -258,7 +258,35 @@ export default function ReviewInterface() {
         }
 
         console.log("Populated User Identifier Map:", localUserEmailMap);
-        // console.log("Local Agent Name Map:", localAgentNameMap);
+
+        // --- Modified Agent Map Population ---
+        const localAgentNameMap = new Map<string, string>();
+        if (agentIds.length > 0) {
+            console.log("Fetching agent names for IDs:", agentIds);
+            const { data: agents, error: agentError } = await supabase
+                .from('ai_agents')
+                .select('id, name')
+                .in('id', agentIds);
+
+            if (agentError) {
+                console.warn("Could not fetch agent names:", agentError.message);
+            } else {
+                agents?.forEach(a => {
+                    if (a.id) {
+                        const identifier = a.name ? a.name : a.id;
+                        localAgentNameMap.set(a.id, identifier);
+                    }
+                });
+            }
+            // Fallback for any IDs not found in the query result
+            agentIds.forEach(id => {
+                if (!localAgentNameMap.has(id)) {
+                    localAgentNameMap.set(id, id);
+                }
+            });
+        }
+        console.log("Populated Agent Name Map:", localAgentNameMap);
+        // --------------------------------
 
         // 3. Process for User Stats, AGENT Stats, AND Article Decisions
         const statsByUser = new Map<string, UserReviewStats>();
@@ -296,17 +324,24 @@ export default function ReviewInterface() {
             // --- Update Agent Stats ---
             else if (rawDecision.agent_id) {
                 const agentId = rawDecision.agent_id;
-                // Assuming agentNameMap is populated elsewhere or retrieved earlier
-                const agentIdentifier = agentNameMap.get(agentId) || agentId; // Use name or ID
-                if (!statsByAgent.has(agentId)) {
-                    statsByAgent.set(agentId, { agentId, agentName: agentIdentifier, includeCount: 0, maybeCount: 0, excludeCount: 0, totalScreened: 0 });
+                // Use the map, which now guaranteed has an entry (name or ID)
+                const agentIdentifier = localAgentNameMap.get(agentId) || agentId; // Fallback just in case
+
+                let currentAgentStats = statsByAgent.get(agentId);
+                if (!currentAgentStats) {
+                    currentAgentStats = { agentId, agentName: agentIdentifier, includeCount: 0, maybeCount: 0, excludeCount: 0, totalScreened: 0 };
+                    statsByAgent.set(agentId, currentAgentStats);
+                } else {
+                     // Ensure agentName is the best identifier from the map
+                     if (currentAgentStats.agentName === agentId && agentIdentifier !== agentId) {
+                        currentAgentStats.agentName = agentIdentifier;
+                     }
                 }
-                const currentAgentStats = statsByAgent.get(agentId)!;
+                // Update counts
                 if (rawDecision.decision === 'include') currentAgentStats.includeCount++;
                 else if (rawDecision.decision === 'maybe') currentAgentStats.maybeCount++;
                 else if (rawDecision.decision === 'exclude') currentAgentStats.excludeCount++;
                 currentAgentStats.totalScreened++;
-                statsByAgent.set(agentId, currentAgentStats);
             }
 
             // --- Update Decisions By Article ---
@@ -314,9 +349,8 @@ export default function ReviewInterface() {
                  user_id: rawDecision.user_id,
                  agent_id: rawDecision.agent_id,
                  decision: rawDecision.decision,
-                 // Use maps for display names if needed here too
                  user_email: rawDecision.user_id ? localUserEmailMap.get(rawDecision.user_id) : undefined,
-                 agent_name: rawDecision.agent_id ? agentNameMap.get(rawDecision.agent_id) : undefined, // Assumes agentNameMap is populated
+                 agent_name: rawDecision.agent_id ? localAgentNameMap.get(rawDecision.agent_id) : undefined, // Use map here too
              };
              const existingDecisions = decisionsByArticle.get(articleId) || [];
              decisionsByArticle.set(articleId, [...existingDecisions, decisionForArticle]);
@@ -326,7 +360,7 @@ export default function ReviewInterface() {
         setUserStats(Array.from(statsByUser.values()));
         setAgentStats(Array.from(statsByAgent.values()));
         setUserEmailMap(localUserEmailMap);
-        // setAgentNameMap(localAgentNameMap); // Set agent map if needed
+        setAgentNameMap(localAgentNameMap); // Store the populated map in state
         // --------------------------------
 
         // --- Step 2: Fetch ONLY Conflicting Articles using RPC ---
