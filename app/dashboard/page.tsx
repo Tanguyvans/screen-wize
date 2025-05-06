@@ -1324,8 +1324,8 @@ export default function DashboardPage() {
                             Your Screening Progress
                         </h3>
                         <div className="flex items-center gap-2">
-                            {screeningStats && screeningStats.totalArticles > 0 && ( <Link href="/review" passHref><Button size="sm" variant="secondary">Review Project</Button></Link> )}
-                            {screeningStats && screeningStats.totalArticles > 0 && ( <Link href={`/screening/${selectedProjectId}`} passHref><Button size="sm">{screeningStats.userScreenedCount > 0 ? "Continue Screening" : "Start Screening"}</Button></Link> )}
+                            {screeningStats && screeningStats.totalArticles > 0 && ( <Link href="/review" passHref><Button size="lg" variant="outline">Review Project</Button></Link> )}
+                            {screeningStats && screeningStats.totalArticles > 0 && ( <Link href={`/screening/${selectedProjectId}`} passHref><Button size="lg" variant="outline">{screeningStats.userScreenedCount > 0 ? "Continue Screening" : "Start Screening"}</Button></Link> )}
                         </div>
                     </div>
 
