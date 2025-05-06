@@ -22,18 +22,35 @@ export default function Login() {
     setLoading(true);
     setMessage(''); // Clear previous messages
 
-    const { error } = await supabase.auth.signInWithPassword({
+    const { error: signInError } = await supabase.auth.signInWithPassword({
       email: email,
       password: password,
     });
 
-    if (error) {
-      setMessage(`Login failed: ${error.message}`);
-      setLoading(false); // Stop loading on error
+    if (signInError) {
+      setMessage(`Login failed: ${signInError.message}`);
+      setLoading(false);
     } else {
-      setMessage('Login successful! Redirecting...');
-      // Redirect to the dashboard page
-      router.push('/dashboard'); // <--- Change this line
+      setMessage('Login successful! Checking profile...');
+      console.log('Login successful, attempting to ensure profile exists...');
+
+      try {
+        const { error: rpcError } = await supabase.rpc('ensure_user_profile');
+
+        if (rpcError) {
+          console.error('Error ensuring user profile after login:', rpcError.message);
+          // Decide how critical this is. Maybe log it but proceed?
+          //setMessage('Login successful, but failed to verify profile.'); // Optional user feedback
+        } else {
+          console.log('User profile ensured.');
+        }
+      } catch (e) {
+        console.error('Exception when calling ensure_user_profile after login:', e);
+      }
+
+      setMessage('Redirecting...');
+      router.refresh();
+      router.push('/dashboard');
     }
   };
 
@@ -90,7 +107,7 @@ export default function Login() {
             />
           </div>
           {message && (
-             <p className={`text-sm text-center ${message.includes('failed') ? 'text-destructive' : 'text-green-600'}`}>
+             <p className={`text-sm text-center ${message.includes('failed') || message.includes('Error') ? 'text-destructive' : 'text-green-600'}`}>
                 {message}
               </p>
           )}
