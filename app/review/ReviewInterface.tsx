@@ -452,13 +452,28 @@ export default function ReviewInterface() {
       // ---------------------------------------------------------------
   };
 
+  // Helper function to safely quote strings for CSV
+  const toCsvValue = (value: any): string => {
+    if (value === null || value === undefined) {
+      return '""';
+    }
+    const stringValue = String(value);
+    // Escape double quotes by doubling them
+    const escapedString = stringValue.replace(/"/g, '""');
+    // If the string contains a comma, newline, or double quote, enclose it in double quotes
+    if (/[",\n\r]/.test(escapedString)) {
+      return `"${escapedString}"`;
+    }
+    return escapedString;
+  };
+
   // --- RENAME and UPDATE Download Handler ---
   const handleDownloadFinalized = useCallback(async () => {
     if (!selectedProjectId || isDownloadingFinalized) return;
 
     setIsDownloadingFinalized(true);
     setDownloadFinalizedError(null);
-    console.log("Downloading finalized articles...");
+    console.log("Downloading finalized articles as CSV...");
 
     try {
         // Fetch fresh finalized data using the NEW RPC
@@ -471,50 +486,76 @@ export default function ReviewInterface() {
             setIsDownloadingFinalized(false); return;
         }
 
-        // Format data for TXT/TSV file
-        let fileContent = "PMID\tTitle\tAbstract\tFinalDecision\tResolverID\tFinalizedAt\tOriginalDecisions\n"; // Header
+        // Define CSV Headers
+        const headers = [
+            "PMID", "Title", "Abstract", "FinalDecision",
+            "ResolverID/Email", "FinalizerAgentID/Name", "FinalExclusionReason",
+            "FinalizedAt", "OriginalDecisions"
+        ];
+        let csvContent = headers.join(',') + '\n'; // Use actual newline for the header row
+
         finalizedData.forEach((article: FinalizedArticle) => {
-            const pmid = article.pmid?.replace(/[\n\t]/g, ' ') || 'N/A';
-            const title = article.title?.replace(/[\n\t]/g, ' ') || 'N/A';
-            const abstract = article.abstract?.replace(/[\n\t]/g, ' ') || 'N/A';
+            const pmid = article.pmid || 'N/A';
+            const title = article.title || 'N/A';
+            const abstractValue = article.abstract || 'N/A';
             const decision = article.final_decision?.toUpperCase() || 'N/A';
-            const resolver = article.resolver_id || 'N/A'; // Was unanimous or resolved by unknown
+            
+            let resolverDisplay = 'N/A';
+            if (article.resolver_id) {
+                resolverDisplay = userEmailMap.get(article.resolver_id) || article.resolver_id;
+            }
+
+            let finalizerAgentDisplay = 'N/A';
+            if (article.finalizing_agent_id) {
+                finalizerAgentDisplay = agentNameMap.get(article.finalizing_agent_id) || article.finalizing_agent_id;
+            }
+            
+            const finalExclusionReason = article.final_exclusion_reason || 'N/A';
             const finalizedTime = article.finalized_at ? new Date(article.finalized_at).toISOString() : 'N/A';
 
-            // Format original decisions into a simple string for the TSV
             let originalDecisionsStr = "N/A";
             if (article.original_decisions && article.original_decisions.length > 0) {
                  originalDecisionsStr = article.original_decisions.map((dec: Decision) => {
-                     let name = dec.agent_id ? (dec.agent_name || `Agent:${dec.agent_id.substring(0,6)}`) : (dec.user_id ? (userEmailMap.get(dec.user_id) || `User:${dec.user_id.substring(0,6)}`) : 'Unknown');
+                     let name = 'Unknown';
+                     if (dec.agent_id) {
+                         name = dec.agent_name || agentNameMap.get(dec.agent_id) || `Agent:${dec.agent_id.substring(0,6)}`;
+                     } else if (dec.user_id) {
+                         name = dec.user_email || userEmailMap.get(dec.user_id) || `User:${dec.user_id.substring(0,6)}`;
+                     }
                      return `${name}:${dec.decision.toUpperCase()}`;
-                 }).join('; '); // Join with semicolon
+                 }).join('; ');
             }
-            originalDecisionsStr = originalDecisionsStr.replace(/[\n\t]/g, ' '); // Sanitize
 
-            fileContent += `${pmid}\t${title}\t${abstract}\t${decision}\t${resolver}\t${finalizedTime}\t${originalDecisionsStr}\n`;
+            const row = [
+                pmid, title, abstractValue, decision,
+                resolverDisplay, finalizerAgentDisplay, finalExclusionReason,
+                finalizedTime, originalDecisionsStr
+            ].map(toCsvValue).join(',');
+
+            csvContent += row + '\n'; // Use actual newline for each data row
         });
 
         // Trigger browser download
-        const blob = new Blob([fileContent], { type: 'text/plain;charset=utf-8' });
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
         const currentProject = projects.find(p => p.id === selectedProjectId);
-        const projectName = currentProject?.name || selectedProjectId.substring(0,8);
-        link.download = `project_${projectName}_finalized_articles.txt`;
+        const projectName = currentProject?.name?.replace(/\s+/g, '_') || selectedProjectId.substring(0,8);
+        link.download = `project_${projectName}_finalized_articles.csv`;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
         URL.revokeObjectURL(url);
-        console.log("Finalized articles download initiated as .txt");
+        console.log("Finalized articles download initiated as .csv");
 
     } catch (err: any) {
-        console.error("Error downloading finalized articles:", err);
-        setDownloadFinalizedError(err.message || "An unknown error occurred during download.");
+        console.error("Error downloading finalized articles CSV:", err);
+        setDownloadFinalizedError(err.message || "An unknown error occurred during CSV download.");
     } finally {
         setIsDownloadingFinalized(false);
     }
-  }, [selectedProjectId, projects, isDownloadingFinalized, userEmailMap]);
+  }, [selectedProjectId, projects, isDownloadingFinalized, userEmailMap, agentNameMap]);
 
   // --- Render Logic ---
   const selectedProjectName = projects.find(p => p.id === selectedProjectId)?.name || '';
@@ -724,7 +765,7 @@ export default function ReviewInterface() {
                           ) : (
                              <Download className="mr-2 h-4 w-4" />
                           )}
-                          Download Finalized Data (.txt)
+                          Download Finalized Data (.csv)
                        </Button>
                        {/* ----------------------- */}
                    </div>
