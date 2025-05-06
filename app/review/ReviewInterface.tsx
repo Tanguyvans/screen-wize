@@ -235,28 +235,34 @@ export default function ReviewInterface() {
               .from('profiles')
               .select('id, email')
               .in('id', userIds);
-            if (profileError) { console.warn("Could not fetch user emails:", profileError.message); }
-             // --- Populate local map ---
-            else { profiles?.forEach(p => { if (p.id && p.email) { localUserEmailMap.set(p.id, p.email); } }); }
+
+            if (profileError) {
+                console.warn("Could not fetch user profiles:", profileError.message);
+                // If fetch fails, map will remain empty, leading to ID fallback
+            } else {
+                profiles?.forEach(p => {
+                    if (p.id) {
+                        // Use email if available and not empty, otherwise use the ID itself as the identifier
+                        const identifier = p.email ? p.email : p.id;
+                        localUserEmailMap.set(p.id, identifier);
+                    }
+                });
+            }
+            // Ensure all userIds have *some* entry in the map, even if it's just the ID
+            userIds.forEach(id => {
+                if (!localUserEmailMap.has(id)) {
+                    console.warn(`User ID ${id} not found in profiles query results or had no email. Using ID as identifier.`);
+                    localUserEmailMap.set(id, id); // Use ID as fallback identifier
+                }
+            });
         }
 
-        const localAgentNameMap = new Map<string, string>();
-        if (agentIds.length > 0) {
-             console.log("Fetching agent names for IDs:", agentIds);
-            const { data: agents, error: agentError } = await supabase
-                .from('ai_agents')
-                .select('id, name')
-                .in('id', agentIds);
-            if (agentError) { console.warn("Could not fetch agent names:", agentError.message); }
-            else { agents?.forEach(a => { if (a.id && a.name) { localAgentNameMap.set(a.id, a.name); } }); }
-        }
-        console.log("Local User Email Map:", localUserEmailMap);
-        console.log("Local Agent Name Map:", localAgentNameMap);
-        // --------------------------------
+        console.log("Populated User Identifier Map:", localUserEmailMap);
+        // console.log("Local Agent Name Map:", localAgentNameMap);
 
         // 3. Process for User Stats, AGENT Stats, AND Article Decisions
         const statsByUser = new Map<string, UserReviewStats>();
-        const statsByAgent = new Map<string, AgentReviewStats>(); // <-- NEW Map for Agent Stats
+        const statsByAgent = new Map<string, AgentReviewStats>();
         const decisionsByArticle = new Map<string, Decision[]>();
 
         allDecisionsRaw.forEach(rawDecision => {
@@ -265,21 +271,33 @@ export default function ReviewInterface() {
             // --- Update User Stats (Only if user_id is present) ---
             if (rawDecision.user_id) {
                 const userId = rawDecision.user_id;
-                const userIdentifier = localUserEmailMap.get(userId) || userId;
-                if (!statsByUser.has(userId)) {
-                    statsByUser.set(userId, { userId, userEmail: userIdentifier, includeCount: 0, maybeCount: 0, excludeCount: 0, totalScreened: 0 });
+                // Use the map, which now guaranteed has an entry (email or ID)
+                const userIdentifier = localUserEmailMap.get(userId) || userId; // Fallback just in case
+
+                let currentUserStats = statsByUser.get(userId);
+                if (!currentUserStats) {
+                    // Initialize with the best identifier found
+                    currentUserStats = { userId, userEmail: userIdentifier, includeCount: 0, maybeCount: 0, excludeCount: 0, totalScreened: 0 };
+                    statsByUser.set(userId, currentUserStats);
+                } else {
+                    // Ensure identifier is up-to-date if it was previously just the ID
+                    if (currentUserStats.userEmail === userId && userIdentifier !== userId) {
+                        currentUserStats.userEmail = userIdentifier;
+                    }
                 }
-                const currentUserStats = statsByUser.get(userId)!;
+
+                // Update counts
                 if (rawDecision.decision === 'include') currentUserStats.includeCount++;
                 else if (rawDecision.decision === 'maybe') currentUserStats.maybeCount++;
                 else if (rawDecision.decision === 'exclude') currentUserStats.excludeCount++;
                 currentUserStats.totalScreened++;
-                statsByUser.set(userId, currentUserStats);
+
             }
-            // --- NEW: Update Agent Stats (Only if agent_id is present) ---
+            // --- Update Agent Stats ---
             else if (rawDecision.agent_id) {
                 const agentId = rawDecision.agent_id;
-                const agentIdentifier = localAgentNameMap.get(agentId) || agentId; // Use name or ID
+                // Assuming agentNameMap is populated elsewhere or retrieved earlier
+                const agentIdentifier = agentNameMap.get(agentId) || agentId; // Use name or ID
                 if (!statsByAgent.has(agentId)) {
                     statsByAgent.set(agentId, { agentId, agentName: agentIdentifier, includeCount: 0, maybeCount: 0, excludeCount: 0, totalScreened: 0 });
                 }
@@ -288,28 +306,27 @@ export default function ReviewInterface() {
                 else if (rawDecision.decision === 'maybe') currentAgentStats.maybeCount++;
                 else if (rawDecision.decision === 'exclude') currentAgentStats.excludeCount++;
                 currentAgentStats.totalScreened++;
-                statsByAgent.set(agentId, currentAgentStats); // Update map
+                statsByAgent.set(agentId, currentAgentStats);
             }
 
-            // --- Update Decisions By Article (Populate with name/email) ---
-            const decisionForArticle: Decision = {
-                 user_id: rawDecision.user_id, // Keep the ID
-                 agent_id: rawDecision.agent_id, // Keep the ID
+            // --- Update Decisions By Article ---
+             const decisionForArticle: Decision = {
+                 user_id: rawDecision.user_id,
+                 agent_id: rawDecision.agent_id,
                  decision: rawDecision.decision,
-                 // Look up email if user_id exists
-                 user_email: rawDecision.user_id ? (localUserEmailMap.get(rawDecision.user_id) || undefined) : undefined,
-                 // Look up agent name if agent_id exists
-                 agent_name: rawDecision.agent_id ? (localAgentNameMap.get(rawDecision.agent_id) || undefined) : undefined,
-            };
-            const existingDecisions = decisionsByArticle.get(articleId) || [];
-            decisionsByArticle.set(articleId, [...existingDecisions, decisionForArticle]);
+                 // Use maps for display names if needed here too
+                 user_email: rawDecision.user_id ? localUserEmailMap.get(rawDecision.user_id) : undefined,
+                 agent_name: rawDecision.agent_id ? agentNameMap.get(rawDecision.agent_id) : undefined, // Assumes agentNameMap is populated
+             };
+             const existingDecisions = decisionsByArticle.get(articleId) || [];
+             decisionsByArticle.set(articleId, [...existingDecisions, decisionForArticle]);
         });
 
         // Set user stats state
         setUserStats(Array.from(statsByUser.values()));
-        setAgentStats(Array.from(statsByAgent.values())); // <-- Set agent stats state
-        setUserEmailMap(localUserEmailMap); // <-- Store the populated map in state
-        setAgentNameMap(localAgentNameMap); // <<< Store agent names in state
+        setAgentStats(Array.from(statsByAgent.values()));
+        setUserEmailMap(localUserEmailMap);
+        // setAgentNameMap(localAgentNameMap); // Set agent map if needed
         // --------------------------------
 
         // --- Step 2: Fetch ONLY Conflicting Articles using RPC ---
