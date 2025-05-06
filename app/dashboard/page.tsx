@@ -20,6 +20,7 @@ import { Badge } from "@/components/ui/badge"; // For invitation status later if
 import { ReloadIcon } from "@radix-ui/react-icons"; // For loading spinners on buttons
 import { CreateAgentDialog } from '@/components/CreateAgentDialog'; // <-- Import Agent Dialog
 import { Label } from "@/components/ui/label"; // <-- Import Label for dropdown
+import { useRouter } from 'next/navigation'; // <-- 1. Import useRouter
 
 // Define the screening decision type mirroring the enum
 type ScreeningDecision = 'include' | 'exclude' | 'maybe' | 'unscreened';
@@ -148,6 +149,7 @@ export default function DashboardPage() {
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true); // Page loading state
   const [error, setError] = useState<string | null>(null); // Page/fetch error state
+  const router = useRouter(); // <-- 2. Initialize router
 
   // --- Calculate selectedProject EARLY ---
   // Find the project object based on the selected ID. Do this before hooks that might use it.
@@ -507,6 +509,13 @@ export default function DashboardPage() {
     };
     // Add fetchPendingInvitations to dependency array
   }, [fetchProjects, fetchPendingInvitations]);
+
+  // --- Redirect if not logged in (after loading) ---
+  useEffect(() => {
+    if (!loading && !user) {
+      router.push('/login');
+    }
+  }, [user, loading, router]); // <-- 3. Add useEffect for redirection
 
   // --- Fetch Screening Stats when Project or User Changes ---
   useEffect(() => {
@@ -1042,7 +1051,10 @@ export default function DashboardPage() {
 
   // --- Render Logic ---
   if (loading) { return <div className="container mx-auto px-4 py-8 text-center">Loading dashboard...</div>; }
-  if (!user) { return <div className="container mx-auto px-4 py-8 text-center">Redirecting to login...</div>; }
+  if (!user) {
+    // This message will briefly show while the useEffect above triggers the redirect.
+    return <div className="container mx-auto px-4 py-8 text-center">Redirecting to login...</div>;
+  }
 
   // Calculate progress percentage
   const progressPercent = screeningStats && screeningStats.totalArticles > 0
