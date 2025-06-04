@@ -1,0 +1,1406 @@
+PMID- 36257926
+OWN - NLM
+STAT- MEDLINE
+DCOM- 20230116
+LR  - 20240916
+IS  - 1552-6569 (Electronic)
+IS  - 1051-2284 (Print)
+IS  - 1051-2284 (Linking)
+VI  - 33
+IP  - 1
+DP  - 2023 Jan
+TI  - Functional magnetic resonance imaging, deep learning, and Alzheimer's disease: A 
+      systematic review.
+PG  - 5-18
+LID - 10.1111/jon.13063 [doi]
+AB  - Alzheimer's disease (AD) is currently diagnosed using a mixture of psychological 
+      tests and clinical observations. However, these diagnoses are not perfect, and 
+      additional diagnostic tools (e.g., MRI) can help improve our understanding of AD 
+      as well as our ability to detect the disease. Accordingly, a large amount of 
+      research has been invested into innovative diagnostic methods for AD. Functional 
+      MRI (fMRI) is a form of neuroimaging technology that has been used to diagnose 
+      AD; however, fMRI is incredibly noisy, complex, and thus lacks clinical use. 
+      Nonetheless, recent innovations in deep learning technology could enable the 
+      simplified and streamlined analysis of fMRI. Deep learning is a form of 
+      artificial intelligence that uses computer algorithms based on human neural 
+      networks to solve complex problems. For example, in fMRI research, deep learning 
+      models can automatically denoise images and classify AD by detecting patterns in 
+      participants' brain scans. In this systematic review, we investigate how fMRI 
+      (specifically resting-state fMRI) and deep learning methods are used to diagnose 
+      AD. In turn, we outline the common deep neural network, preprocessing, and 
+      classification methods used in the literature. We also discuss the accuracy, 
+      strengths, limitations, and future direction of fMRI deep learning methods. In 
+      turn, we aim to summarize the current field for new researchers, suggest specific 
+      areas for future research, and highlight the potential of fMRI to aid AD 
+      diagnoses.
+CI  - © 2022 The Authors. Journal of Neuroimaging published by Wiley Periodicals LLC on 
+      behalf of American Society of Neuroimaging.
+FAU - Warren, Samuel L
+AU  - Warren SL
+AUID- ORCID: 0000-0001-6473-1791
+AD  - School of Psychology, Faculty of Society and Design, Bond University, Gold Coast, 
+      Queensland, Australia.
+FAU - Moustafa, Ahmed A
+AU  - Moustafa AA
+AD  - School of Psychology, Faculty of Society and Design, Bond University, Gold Coast, 
+      Queensland, Australia.
+AD  - Department of Human Anatomy and Physiology, Faculty of Health Sciences, 
+      University of Johannesburg, Johannesburg, South Africa.
+LA  - eng
+PT  - Journal Article
+PT  - Research Support, Non-U.S. Gov't
+PT  - Review
+PT  - Systematic Review
+DEP - 20221018
+PL  - United States
+TA  - J Neuroimaging
+JT  - Journal of neuroimaging : official journal of the American Society of 
+      Neuroimaging
+JID - 9102705
+SB  - IM
+MH  - Humans
+MH  - *Alzheimer Disease/diagnostic imaging/pathology
+MH  - *Deep Learning
+MH  - Artificial Intelligence
+MH  - Magnetic Resonance Imaging/methods
+MH  - Neuroimaging
+MH  - Brain/pathology
+PMC - PMC10092597
+OTO - NOTNLM
+OT  - Alzheimer's disease (AD)
+OT  - computer-assisted diagnosis (CAD)
+OT  - deep learning
+OT  - deep neural networks (DNN)
+OT  - functional connectivity
+OT  - functional magnetic resonance imaging (fMRI)
+EDAT- 2022/10/19 06:00
+MHDA- 2023/01/17 06:00
+PMCR- 2023/04/12
+CRDT- 2022/10/18 23:02
+PHST- 2022/09/30 00:00 [revised]
+PHST- 2022/05/06 00:00 [received]
+PHST- 2022/09/30 00:00 [accepted]
+PHST- 2022/10/19 06:00 [pubmed]
+PHST- 2023/01/17 06:00 [medline]
+PHST- 2022/10/18 23:02 [entrez]
+PHST- 2023/04/12 00:00 [pmc-release]
+AID - JON13063 [pii]
+AID - 10.1111/jon.13063 [doi]
+PST - ppublish
+SO  - J Neuroimaging. 2023 Jan;33(1):5-18. doi: 10.1111/jon.13063. Epub 2022 Oct 18.
+
+PMID- 33803217
+OWN - NLM
+STAT- MEDLINE
+DCOM- 20210427
+LR  - 20210427
+IS  - 1422-0067 (Electronic)
+IS  - 1422-0067 (Linking)
+VI  - 22
+IP  - 5
+DP  - 2021 Mar 9
+TI  - Machine Learning and Novel Biomarkers for the Diagnosis of Alzheimer's Disease.
+LID - 10.3390/ijms22052761 [doi]
+LID - 2761
+AB  - BACKGROUND: Alzheimer's disease (AD) is a complex and severe neurodegenerative 
+      disease that still lacks effective methods of diagnosis. The current diagnostic 
+      methods of AD rely on cognitive tests, imaging techniques and cerebrospinal fluid 
+      (CSF) levels of amyloid-β1-42 (Aβ42), total tau protein and hyperphosphorylated 
+      tau (p-tau). However, the available methods are expensive and relatively 
+      invasive. Artificial intelligence techniques like machine learning tools have 
+      being increasingly used in precision diagnosis. METHODS: We conducted a 
+      meta-analysis to investigate the machine learning and novel biomarkers for the 
+      diagnosis of AD. METHODS: We searched PubMed, the Cochrane Central Register of 
+      Controlled Trials, and the Cochrane Database of Systematic Reviews for reviews 
+      and trials that investigated the machine learning and novel biomarkers in 
+      diagnosis of AD. RESULTS: In additional to Aβ and tau-related biomarkers, 
+      biomarkers according to other mechanisms of AD pathology have been investigated. 
+      Neuronal injury biomarker includes neurofiliament light (NFL). Biomarkers about 
+      synaptic dysfunction and/or loss includes neurogranin, BACE1, synaptotagmin, 
+      SNAP-25, GAP-43, synaptophysin. Biomarkers about neuroinflammation includes 
+      sTREM2, and YKL-40. Besides, d-glutamate is one of coagonists at the NMDARs. 
+      Several machine learning algorithms including support vector machine, logistic 
+      regression, random forest, and naïve Bayes) to build an optimal predictive model 
+      to distinguish patients with AD from healthy controls. CONCLUSIONS: Our results 
+      revealed machine learning with novel biomarkers and multiple variables may 
+      increase the sensitivity and specificity in diagnosis of AD. Rapid and 
+      cost-effective HPLC for biomarkers and machine learning algorithms may assist 
+      physicians in diagnosing AD in outpatient clinics.
+FAU - Chang, Chun-Hung
+AU  - Chang CH
+AUID- ORCID: 0000-0003-2949-5855
+AD  - Institute of Clinical Medical Science, China Medical University, Taichung 40402, 
+      Taiwan.
+AD  - Department of Psychiatry & Brain Disease Research Center, China Medical 
+      University Hospital, Taichung 40402, Taiwan.
+AD  - An Nan Hospital, China Medical University, Tainan 709025, Taiwan.
+FAU - Lin, Chieh-Hsin
+AU  - Lin CH
+AD  - Institute of Clinical Medical Science, China Medical University, Taichung 40402, 
+      Taiwan.
+AD  - Graduate Institute of Biomedical Sciences, China Medical University, Taichung 
+      40402, Taiwan.
+AD  - Kaohsiung Chang Gung Memorial Hospital, Chang Gung University College of 
+      Medicine, Kaohsiung 83301, Taiwan.
+AD  - School of Medicine, Chang Gung University, Taoyuan 83301, Taiwan.
+FAU - Lane, Hsien-Yuan
+AU  - Lane HY
+AUID- ORCID: 0000-0003-2162-8174
+AD  - Institute of Clinical Medical Science, China Medical University, Taichung 40402, 
+      Taiwan.
+AD  - Department of Psychiatry & Brain Disease Research Center, China Medical 
+      University Hospital, Taichung 40402, Taiwan.
+AD  - Graduate Institute of Biomedical Sciences, China Medical University, Taichung 
+      40402, Taiwan.
+AD  - Department of Psychology, College of Medical and Health Sciences, Asia 
+      University, Taichung 41354, Taiwan.
+LA  - eng
+PT  - Journal Article
+PT  - Systematic Review
+DEP - 20210309
+PL  - Switzerland
+TA  - Int J Mol Sci
+JT  - International journal of molecular sciences
+JID - 101092791
+RN  - 0 (Biomarkers)
+SB  - IM
+MH  - Aged
+MH  - *Alzheimer Disease/diagnosis/metabolism
+MH  - Biomarkers/metabolism
+MH  - Chromatography, High Pressure Liquid
+MH  - *Diagnosis, Computer-Assisted
+MH  - Female
+MH  - Humans
+MH  - *Machine Learning
+MH  - Middle Aged
+PMC - PMC7963160
+OTO - NOTNLM
+OT  - AI
+OT  - Alzheimer’s disease
+OT  - biomarker
+OT  - deep learning
+OT  - machine learning
+COIS- The authors declare no conflict of interest. The sponsors were not involved in 
+      the design of the study; the collection, analysis, and interpretation of the 
+      data; the writing of the report; and the decision to submit the article for 
+      publication.
+EDAT- 2021/04/04 06:00
+MHDA- 2021/04/28 06:00
+PMCR- 2021/03/09
+CRDT- 2021/04/03 01:13
+PHST- 2021/01/31 00:00 [received]
+PHST- 2021/03/02 00:00 [revised]
+PHST- 2021/03/05 00:00 [accepted]
+PHST- 2021/04/03 01:13 [entrez]
+PHST- 2021/04/04 06:00 [pubmed]
+PHST- 2021/04/28 06:00 [medline]
+PHST- 2021/03/09 00:00 [pmc-release]
+AID - ijms22052761 [pii]
+AID - ijms-22-02761 [pii]
+AID - 10.3390/ijms22052761 [doi]
+PST - epublish
+SO  - Int J Mol Sci. 2021 Mar 9;22(5):2761. doi: 10.3390/ijms22052761.
+
+PMID- 35358720
+OWN - NLM
+STAT- MEDLINE
+DCOM- 20220419
+LR  - 20220827
+IS  - 1872-9649 (Electronic)
+IS  - 1568-1637 (Linking)
+VI  - 77
+DP  - 2022 May
+TI  - Artificial intelligence in brain MRI analysis of Alzheimer's disease over the 
+      past 12 years: A systematic review.
+PG  - 101614
+LID - S1568-1637(22)00056-3 [pii]
+LID - 10.1016/j.arr.2022.101614 [doi]
+AB  - INTRODUCTION: Multiple structural brain changes in Alzheimer's disease (AD) and 
+      mild cognitive impairment (MCI) have been revealed on magnetic resonance imaging 
+      (MRI). There is a fast-growing effort in applying artificial intelligence (AI) to 
+      analyze these data. Here, we review and evaluate the AI studies in brain MRI 
+      analysis with synthesis. METHODS: A systematic review of the literature, spanning 
+      the years from 2009 to 2020, was completed using the PubMed database. AI studies 
+      using MRI imaging to investigate normal aging, mild cognitive impairment, and 
+      AD-dementia were retrieved for review. Bias assessment was completed using the 
+      PROBAST criteria. RESULTS: 97 relevant studies were included in the review. The 
+      studies were typically focused on the classification of AD, MCI, and normal aging 
+      (71% of the reported studies) and the prediction of MCI conversion to AD (25%). 
+      The best performance was achieved by using the deep learning-based convolution 
+      neural network algorithms (weighted average accuracy 89%), in contrast to 76-86% 
+      using Logistic Regression, Support Vector Machines, and other AI methods. 
+      DISCUSSION: The synthesized evidence is paramount to developing sophisticated AI 
+      approaches to reliably capture and quantify multiple subtle MRI changes in the 
+      whole brain that exemplify the complexity and heterogeneity of AD and brain 
+      aging.
+CI  - Copyright © 2022. Published by Elsevier B.V.
+FAU - Frizzell, Tory O
+AU  - Frizzell TO
+AD  - Clinical Research and Evaluation, Surrey Memorial Hospital, Fraser Health, 
+      Surrey, BC, Canada; Department of Engineering Science, Simon Fraser University, 
+      Burnaby, BC, Canada.
+FAU - Glashutter, Margit
+AU  - Glashutter M
+AD  - Clinical Research and Evaluation, Surrey Memorial Hospital, Fraser Health, 
+      Surrey, BC, Canada.
+FAU - Liu, Careesa C
+AU  - Liu CC
+AD  - Department of Engineering Science, Simon Fraser University, Burnaby, BC, Canada; 
+      Rotman Research Institute, Baycrest Health Sciences, Toronto, ON, Canada.
+FAU - Zeng, An
+AU  - Zeng A
+AD  - Faculty of Computer, Guangdong Technology University, Guangzhou, Guangdong, 
+      China.
+FAU - Pan, Dan
+AU  - Pan D
+AD  - School of Electronics and Information, Guangdong Polytechnic Normal University, 
+      Guangzhou, China.
+FAU - Hajra, Sujoy Ghosh
+AU  - Hajra SG
+AD  - Department of Engineering Science, Simon Fraser University, Burnaby, BC, Canada; 
+      Aerospace Research Centre, National Research Council Canada, Ottawa, ON, Canada.
+FAU - D'Arcy, Ryan C N
+AU  - D'Arcy RCN
+AD  - Department of Engineering Science, Simon Fraser University, Burnaby, BC, Canada; 
+      Department of Biomedical Physiology & Kinesiology, Simon Fraser University, 
+      Burnaby, BC, Canada.
+FAU - Song, Xiaowei
+AU  - Song X
+AD  - Clinical Research and Evaluation, Surrey Memorial Hospital, Fraser Health, 
+      Surrey, BC, Canada; Department of Biomedical Physiology & Kinesiology, Simon 
+      Fraser University, Burnaby, BC, Canada. Electronic address: 
+      xiaowei.song@fraserhealth.ca.
+LA  - eng
+GR  - CSE125739/CIHR/Canada
+PT  - Journal Article
+PT  - Research Support, Non-U.S. Gov't
+PT  - Review
+PT  - Systematic Review
+DEP - 20220328
+PL  - England
+TA  - Ageing Res Rev
+JT  - Ageing research reviews
+JID - 101128963
+SB  - IM
+MH  - *Alzheimer Disease/diagnostic imaging
+MH  - Artificial Intelligence
+MH  - Brain/diagnostic imaging
+MH  - *Cognitive Dysfunction/diagnostic imaging
+MH  - Humans
+MH  - Magnetic Resonance Imaging/methods
+OTO - NOTNLM
+OT  - Alzheimer’s disease
+OT  - Artificial intelligence
+OT  - Brain aging
+OT  - Deep learning
+OT  - Diagnosis classification
+OT  - Feature recognition
+OT  - MRI
+OT  - Machine learning
+OT  - Mild cognitive impairment
+OT  - Risk prediction
+OT  - Systematic review
+EDAT- 2022/04/01 06:00
+MHDA- 2022/04/20 06:00
+CRDT- 2022/03/31 20:11
+PHST- 2021/03/29 00:00 [received]
+PHST- 2022/03/02 00:00 [revised]
+PHST- 2022/03/24 00:00 [accepted]
+PHST- 2022/04/01 06:00 [pubmed]
+PHST- 2022/04/20 06:00 [medline]
+PHST- 2022/03/31 20:11 [entrez]
+AID - S1568-1637(22)00056-3 [pii]
+AID - 10.1016/j.arr.2022.101614 [doi]
+PST - ppublish
+SO  - Ageing Res Rev. 2022 May;77:101614. doi: 10.1016/j.arr.2022.101614. Epub 2022 Mar 
+      28.
+
+PMID- 37563912
+OWN - NLM
+STAT- MEDLINE
+DCOM- 20231229
+LR  - 20240712
+IS  - 1552-5279 (Electronic)
+IS  - 1552-5260 (Linking)
+VI  - 19
+IP  - 12
+DP  - 2023 Dec
+TI  - Artificial intelligence for diagnostic and prognostic neuroimaging in dementia: A 
+      systematic review.
+PG  - 5885-5904
+LID - 10.1002/alz.13412 [doi]
+AB  - INTRODUCTION: Artificial intelligence (AI) and neuroimaging offer new 
+      opportunities for diagnosis and prognosis of dementia. METHODS: We systematically 
+      reviewed studies reporting AI for neuroimaging in diagnosis and/or prognosis of 
+      cognitive neurodegenerative diseases. RESULTS: A total of 255 studies were 
+      identified. Most studies relied on the Alzheimer's Disease Neuroimaging 
+      Initiative dataset. Algorithmic classifiers were the most commonly used AI method 
+      (48%) and discriminative models performed best for differentiating Alzheimer's 
+      disease from controls. The accuracy of algorithms varied with the patient cohort, 
+      imaging modalities, and stratifiers used. Few studies performed validation in an 
+      independent cohort. DISCUSSION: The literature has several methodological 
+      limitations including lack of sufficient algorithm development descriptions and 
+      standard definitions. We make recommendations to improve model validation 
+      including addressing key clinical questions, providing sufficient description of 
+      AI methods and validating findings in independent datasets. Collaborative 
+      approaches between experts in AI and medicine will help achieve the promising 
+      potential of AI tools in practice. HIGHLIGHTS: There has been a rapid expansion 
+      in the use of machine learning for diagnosis and prognosis in neurodegenerative 
+      disease Most studies (71%) relied on the Alzheimer's Disease Neuroimaging 
+      Initiative (ADNI) dataset with no other individual dataset used more than five 
+      times There has been a recent rise in the use of more complex discriminative 
+      models (e.g., neural networks) that performed better than other classifiers for 
+      classification of AD vs healthy controls We make recommendations to address 
+      methodological considerations, addressing key clinical questions, and validation 
+      We also make recommendations for the field more broadly to standardize outcome 
+      measures, address gaps in the literature, and monitor sources of bias.
+CI  - © 2023 The Authors. Alzheimer's & Dementia published by Wiley Periodicals LLC on 
+      behalf of Alzheimer's Association.
+FAU - Borchert, Robin J
+AU  - Borchert RJ
+AUID- ORCID: 0000-0002-4673-9746
+AD  - Department of Clinical Neurosciences, University of Cambridge, Cambridge, UK.
+AD  - Department of Radiology, University of Cambridge, Cambridge, UK.
+FAU - Azevedo, Tiago
+AU  - Azevedo T
+AUID- ORCID: 0000-0002-2052-3832
+AD  - Department of Computer Science and Technology, University of Cambridge, 
+      Cambridge, UK.
+FAU - Badhwar, AmanPreet
+AU  - Badhwar A
+AUID- ORCID: 0000-0003-3414-3395
+AD  - Department of Pharmacology and Physiology, University of Montreal, Montreal, 
+      Canada.
+AD  - Centre de recherche de l'Institut Universitaire de Gériatrie (CRIUGM), Montreal, 
+      Canada.
+FAU - Bernal, Jose
+AU  - Bernal J
+AUID- ORCID: 0000-0003-3167-5134
+AD  - Centre for Clinical Brain Sciences, The University of Edinburgh, Edinburgh, UK.
+AD  - Institute of Cognitive Neurology and Dementia Research, Otto-von-Guericke 
+      University Magdeburg, Magdeburg, Germany.
+AD  - German Center for Neurodegenerative Diseases (DZNE), Magdeburg, Germany.
+FAU - Betts, Matthew
+AU  - Betts M
+AUID- ORCID: 0000-0002-2840-4678
+AD  - Institute of Cognitive Neurology and Dementia Research, Otto-von-Guericke 
+      University Magdeburg, Magdeburg, Germany.
+AD  - German Center for Neurodegenerative Diseases (DZNE), Magdeburg, Germany.
+AD  - Center for Behavioral Brain Sciences, University of Magdeburg, Magdeburg, 
+      Germany.
+FAU - Bruffaerts, Rose
+AU  - Bruffaerts R
+AUID- ORCID: 0000-0002-2631-9234
+AD  - Computational Neurology, Experimental Neurobiology Unit, Department of Biomedical 
+      Sciences, University of Antwerp, Antwerp, Belgium.
+AD  - Biomedical Research Institute, Hasselt University, Diepenbeek, Belgium.
+FAU - Burkhart, Michael C
+AU  - Burkhart MC
+AUID- ORCID: 0000-0002-2772-5840
+AD  - Department of Psychology, University of Cambridge, Cambridge, UK.
+FAU - Dewachter, Ilse
+AU  - Dewachter I
+AUID- ORCID: 0000-0001-7202-515X
+AD  - Biomedical Research Institute, Hasselt University, Diepenbeek, Belgium.
+FAU - Gellersen, Helena M
+AU  - Gellersen HM
+AUID- ORCID: 0000-0001-7544-2311
+AD  - German Center for Neurodegenerative Diseases (DZNE), Magdeburg, Germany.
+AD  - Department of Psychology, University of Cambridge, Cambridge, UK.
+FAU - Low, Audrey
+AU  - Low A
+AUID- ORCID: 0000-0002-2520-454X
+AD  - Department of Psychiatry, University of Cambridge, Cambridge, UK.
+FAU - Lourida, Ilianna
+AU  - Lourida I
+AUID- ORCID: 0000-0003-4439-2192
+AD  - University of Exeter Medical School, Exeter, UK.
+FAU - Machado, Luiza
+AU  - Machado L
+AUID- ORCID: 0000-0001-8387-3832
+AD  - Department of Biochemistry, Universidade Federal do Rio Grande do Sul, Porto 
+      Alegre, Brazil.
+FAU - Madan, Christopher R
+AU  - Madan CR
+AUID- ORCID: 0000-0003-3228-6501
+AD  - School of Psychology, University of Nottingham, Nottingham, UK.
+FAU - Malpetti, Maura
+AU  - Malpetti M
+AUID- ORCID: 0000-0001-8923-9656
+AD  - Department of Clinical Neurosciences, University of Cambridge, Cambridge, UK.
+FAU - Mejia, Jhony
+AU  - Mejia J
+AUID- ORCID: 0000-0002-0313-6902
+AD  - Department of Biomedical Engineering, Universidad de Los Andes, Bogotá, Colombia.
+FAU - Michopoulou, Sofia
+AU  - Michopoulou S
+AUID- ORCID: 0000-0003-1974-8388
+AD  - Imaging Physics, University Hospital Southampton NHS Foundation Trust, 
+      Southampton, UK.
+FAU - Muñoz-Neira, Carlos
+AU  - Muñoz-Neira C
+AUID- ORCID: 0000-0002-4160-7875
+AD  - Research into Memory, Brain sciences and dementia Group (ReMemBr Group), 
+      Translational Health Sciences, Bristol Medical School, University of Bristol, 
+      Bristol, UK.
+AD  - Artificial Intelligence & Computational Neuroscience Group (AICN Group), 
+      Sheffield Institute for Translational Neuroscience (SITraN), Department of 
+      Neuroscience, University of Sheffield, Sheffield, UK.
+FAU - Pepys, Jack
+AU  - Pepys J
+AUID- ORCID: 0000-0002-1441-0145
+AD  - Department of Clinical Neurosciences, University of Cambridge, Cambridge, UK.
+AD  - Department of Biomedical Sciences, Humanitas University, Pieve Emanuele, Italy.
+FAU - Peres, Marion
+AU  - Peres M
+AUID- ORCID: 0000-0003-3111-6463
+AD  - Department of Clinical Neurosciences, University of Cambridge, Cambridge, UK.
+FAU - Phillips, Veronica
+AU  - Phillips V
+AUID- ORCID: 0000-0002-4383-9434
+AD  - University of Cambridge Medical Library, Cambridge, UK.
+FAU - Ramanan, Siddharth
+AU  - Ramanan S
+AUID- ORCID: 0000-0002-8591-042X
+AD  - Medical Research Council Cognition and Brain Sciences Unit, University of 
+      Cambridge, Cambridge, UK.
+FAU - Tamburin, Stefano
+AU  - Tamburin S
+AUID- ORCID: 0000-0002-1561-2187
+AD  - Department of Neurosciences, Biomedicine and Movement Sciences, University of 
+      Verona, Verona, Italy.
+FAU - Tantiangco, Hanz M
+AU  - Tantiangco HM
+AUID- ORCID: 0000-0002-8699-6579
+AD  - Information School, University of Sheffield, Sheffield, UK.
+FAU - Thakur, Lokendra
+AU  - Thakur L
+AUID- ORCID: 0000-0003-3505-9558
+AD  - Division of Genetics and Genomics, Boston Children's Hospital, Harvard Medical 
+      School, Boston, Massachusetts, USA.
+AD  - Broad Institute of MIT and Harvard, Cambridge, UK.
+AD  - Department of Neurology, Massachusetts General Hospital, Harvard Medical School, 
+      Boston, Massachusetts, USA.
+FAU - Tomassini, Alessandro
+AU  - Tomassini A
+AUID- ORCID: 0000-0001-5645-6910
+AD  - Medical Research Council Cognition and Brain Sciences Unit, University of 
+      Cambridge, Cambridge, UK.
+FAU - Vipin, Ashwati
+AU  - Vipin A
+AUID- ORCID: 0000-0002-3575-7287
+AD  - Nanyang Technological University, Singapore.
+FAU - Tang, Eugene
+AU  - Tang E
+AUID- ORCID: 0000-0003-1030-9311
+AD  - Population Health Sciences Institute, Newcastle University, Newcastle upon Tyne, 
+      UK.
+FAU - Newby, Danielle
+AU  - Newby D
+AUID- ORCID: 0000-0002-3001-1478
+AD  - Department of Psychiatry, University of Oxford, Oxford, UK.
+CN  - Deep Dementia Phenotyping (DEMON) Network
+FAU - Ranson, Janice M
+AU  - Ranson JM
+AUID- ORCID: 0000-0001-9491-3940
+AD  - University of Exeter Medical School, Exeter, UK.
+FAU - Llewellyn, David J
+AU  - Llewellyn DJ
+AUID- ORCID: 0000-0002-2441-4246
+AD  - University of Exeter Medical School, Exeter, UK.
+AD  - Alan Turing Institute, London, UK.
+FAU - Veldsman, Michele
+AU  - Veldsman M
+AUID- ORCID: 0000-0003-2192-378X
+AD  - Department of Experimental Psychology, University of Oxford, Oxford, UK.
+FAU - Rittman, Timothy
+AU  - Rittman T
+AUID- ORCID: 0000-0003-1063-6937
+AD  - Department of Clinical Neurosciences, University of Cambridge, Cambridge, UK.
+LA  - eng
+GR  - MR/X005674/1/MRC_/Medical Research Council/United Kingdom
+PT  - Journal Article
+PT  - Research Support, Non-U.S. Gov't
+PT  - Review
+PT  - Systematic Review
+DEP - 20230810
+PL  - United States
+TA  - Alzheimers Dement
+JT  - Alzheimer's & dementia : the journal of the Alzheimer's Association
+JID - 101231978
+SB  - IM
+MH  - Humans
+MH  - *Alzheimer Disease/diagnostic imaging
+MH  - Prognosis
+MH  - Artificial Intelligence
+MH  - *Neurodegenerative Diseases
+MH  - Brain/diagnostic imaging
+MH  - Neuroimaging/methods
+OTO - NOTNLM
+OT  - Alzheimer's disease
+OT  - artificial intelligence (AI)
+OT  - dementia
+OT  - machine learning (ML)
+OT  - neurodegenerative diseases
+OT  - neuroimaging
+EDAT- 2023/08/11 06:42
+MHDA- 2023/12/29 06:42
+CRDT- 2023/08/11 02:23
+PHST- 2023/05/18 00:00 [revised]
+PHST- 2022/11/22 00:00 [received]
+PHST- 2023/06/02 00:00 [accepted]
+PHST- 2023/12/29 06:42 [medline]
+PHST- 2023/08/11 06:42 [pubmed]
+PHST- 2023/08/11 02:23 [entrez]
+AID - 10.1002/alz.13412 [doi]
+PST - ppublish
+SO  - Alzheimers Dement. 2023 Dec;19(12):5885-5904. doi: 10.1002/alz.13412. Epub 2023 
+      Aug 10.
+
+PMID- 32124697
+OWN - NLM
+STAT- MEDLINE
+DCOM- 20210524
+LR  - 20210524
+IS  - 1875-5828 (Electronic)
+IS  - 1567-2050 (Linking)
+VI  - 17
+IP  - 3
+DP  - 2020
+TI  - MRI Radiomics Classification and Prediction in Alzheimer's Disease and Mild 
+      Cognitive Impairment: A Review.
+PG  - 297-309
+LID - 10.2174/1567205017666200303105016 [doi]
+AB  - BACKGROUND: Alzheimer's Disease (AD) is a progressive neurodegenerative disease 
+      that threatens the health of the elderly. Mild Cognitive Impairment (MCI) is 
+      considered to be the prodromal stage of AD. To date, AD or MCI diagnosis is 
+      established after irreversible brain structure alterations. Therefore, the 
+      development of new biomarkers is crucial to the early detection and treatment of 
+      this disease. At present, there exist some research studies showing that 
+      radiomics analysis can be a good diagnosis and classification method in AD and 
+      MCI. OBJECTIVE: An extensive review of the literature was carried out to explore 
+      the application of radiomics analysis in the diagnosis and classification among 
+      AD patients, MCI patients, and Normal Controls (NCs). RESULTS: Thirty completed 
+      MRI radiomics studies were finally selected for inclusion. The process of 
+      radiomics analysis usually includes the acquisition of image data, Region of 
+      Interest (ROI) segmentation, feature extracting, feature selection, and 
+      classification or prediction. From those radiomics methods, texture analysis 
+      occupied a large part. In addition, the extracted features include histogram, 
+      shapebased features, texture-based features, wavelet features, Gray Level 
+      Co-Occurrence Matrix (GLCM), and Run-Length Matrix (RLM). CONCLUSION: Although 
+      radiomics analysis is already applied to AD and MCI diagnosis and classification, 
+      there still is a long way to go from these computer-aided diagnostic methods to 
+      the clinical application.
+CI  - Copyright© Bentham Science Publishers; For any queries, please email at 
+      epub@benthamscience.net.
+FAU - Feng, Qi
+AU  - Feng Q
+AD  - Department of Radiology, Affiliated Hangzhou First People's Hospital, Zhejiang 
+      University School of Medicine, Hangzhou, China.
+FAU - Ding, Zhongxiang
+AU  - Ding Z
+AD  - Department of Radiology, Affiliated Hangzhou First People's Hospital, Zhejiang 
+      University School of Medicine, Hangzhou, China.
+AD  - Translational Medicine Research Center, Key Laboratory of Clinical Cancer 
+      Pharmacology and Toxicology Research of Zhejiang Province, Affiliated Hangzhou 
+      First People's Hospital, Zhejiang University School of Medicine, Hangzhou, China.
+LA  - eng
+PT  - Journal Article
+PT  - Research Support, Non-U.S. Gov't
+PT  - Review
+PL  - United Arab Emirates
+TA  - Curr Alzheimer Res
+JT  - Current Alzheimer research
+JID - 101208441
+SB  - IM
+MH  - Alzheimer Disease/classification/*diagnostic imaging
+MH  - Cognitive Dysfunction/classification/*diagnostic imaging
+MH  - Early Diagnosis
+MH  - Humans
+MH  - Image Interpretation, Computer-Assisted/*methods
+MH  - Machine Learning
+MH  - Magnetic Resonance Imaging/*methods
+MH  - Neuroimaging/*methods
+OTO - NOTNLM
+OT  - Alzheimer’s disease
+OT  - MR imaging
+OT  - classification
+OT  - mild cognitive impairment
+OT  - radiomics
+OT  - texture analysis.
+EDAT- 2020/03/04 06:00
+MHDA- 2021/05/25 06:00
+CRDT- 2020/03/04 06:00
+PHST- 2019/04/08 00:00 [received]
+PHST- 2020/02/03 00:00 [revised]
+PHST- 2020/03/01 00:00 [accepted]
+PHST- 2020/03/04 06:00 [pubmed]
+PHST- 2021/05/25 06:00 [medline]
+PHST- 2020/03/04 06:00 [entrez]
+AID - CAR-EPUB-104956 [pii]
+AID - 10.2174/1567205017666200303105016 [doi]
+PST - ppublish
+SO  - Curr Alzheimer Res. 2020;17(3):297-309. doi: 10.2174/1567205017666200303105016.
+
+PMID- 38364912
+OWN - NLM
+STAT- MEDLINE
+DCOM- 20240312
+LR  - 20240701
+IS  - 1872-9649 (Electronic)
+IS  - 1568-1637 (Linking)
+VI  - 95
+DP  - 2024 Mar
+TI  - Unveiling the future: Advancements in MRI imaging for neurodegenerative 
+      disorders.
+PG  - 102230
+LID - S1568-1637(24)00048-5 [pii]
+LID - 10.1016/j.arr.2024.102230 [doi]
+AB  - Neurodegenerative disorders represent a significant and growing global health 
+      challenge, necessitating continuous advancements in diagnostic tools for accurate 
+      and early detection. This work explores the recent progress in Magnetic Resonance 
+      Imaging (MRI) techniques and their application in the realm of neurodegenerative 
+      disorders. The introductory section provides a comprehensive overview of the 
+      study's background, significance, and objectives. Recognizing the current 
+      challenges associated with conventional MRI, the manuscript delves into advanced 
+      imaging techniques such as high-resolution structural imaging (HR-MRI), 
+      functional MRI (fMRI), diffusion tensor imaging (DTI), and positron emission 
+      tomography-MRI (PET-MRI) fusion. Each technique is critically examined regarding 
+      its potential to address theranostic limitations and contribute to a more nuanced 
+      understanding of the underlying pathology. A substantial portion of the work is 
+      dedicated to exploring the applications of advanced MRI in specific 
+      neurodegenerative disorders, including Parkinson's disease, Alzheimer's disease, 
+      Huntington's disease, and Amyotrophic Lateral Sclerosis (ALS). In addressing the 
+      future landscape, the manuscript examines technological advances, including the 
+      integration of machine learning and artificial intelligence in neuroimaging. The 
+      conclusion summarizes key findings, outlines implications for future research, 
+      and underscores the importance of these advancements in reshaping our 
+      understanding and approach to neurodegenerative disorders.
+CI  - Copyright © 2024 Elsevier B.V. All rights reserved.
+FAU - Du, Lixin
+AU  - Du L
+AD  - Department of Medical Imaging, Shenzhen Longhua District Central Hospital, 
+      Shenzhen Longhua District Key Laboratory of Neuroimaging, Shenzhen 518110, China. 
+      Electronic address: dulixin2020@126.com.
+FAU - Roy, Shubham
+AU  - Roy S
+AD  - School of Science, Shenzhen Key Laboratory of Flexible Printed Electronics 
+      Technology, Shenzhen Key Laboratory of Advanced Functional Carbon Materials 
+      Research and Comprehensive Application, Harbin Institute of Technology, Shenzhen 
+      518055, China.
+FAU - Wang, Pan
+AU  - Wang P
+AD  - Department of Medical Imaging, Shenzhen Longhua District Central Hospital, 
+      Shenzhen Longhua District Key Laboratory of Neuroimaging, Shenzhen 518110, China.
+FAU - Li, Zhigang
+AU  - Li Z
+AD  - Department of Medical Imaging, Shenzhen Longhua District Central Hospital, 
+      Shenzhen Longhua District Key Laboratory of Neuroimaging, Shenzhen 518110, China.
+FAU - Qiu, Xiaoting
+AU  - Qiu X
+AD  - Department of Medical Imaging, Shenzhen Longhua District Central Hospital, 
+      Shenzhen Longhua District Key Laboratory of Neuroimaging, Shenzhen 518110, China.
+FAU - Zhang, Yinghe
+AU  - Zhang Y
+AD  - School of Science, Shenzhen Key Laboratory of Flexible Printed Electronics 
+      Technology, Shenzhen Key Laboratory of Advanced Functional Carbon Materials 
+      Research and Comprehensive Application, Harbin Institute of Technology, Shenzhen 
+      518055, China.
+FAU - Yuan, Jianpeng
+AU  - Yuan J
+AD  - Department of Radiology, The Seventh Affiliated Hospital, Sun Yat-sen University, 
+      Shenzhen 518107, China. Electronic address: yuanjianpeng@sysush.com.
+FAU - Guo, Bing
+AU  - Guo B
+AD  - School of Science, Shenzhen Key Laboratory of Flexible Printed Electronics 
+      Technology, Shenzhen Key Laboratory of Advanced Functional Carbon Materials 
+      Research and Comprehensive Application, Harbin Institute of Technology, Shenzhen 
+      518055, China. Electronic address: guobing2020@hit.edu.cn.
+LA  - eng
+PT  - Journal Article
+PT  - Research Support, Non-U.S. Gov't
+PT  - Review
+DEP - 20240215
+PL  - England
+TA  - Ageing Res Rev
+JT  - Ageing research reviews
+JID - 101128963
+SB  - IM
+MH  - Humans
+MH  - *Diffusion Tensor Imaging/methods
+MH  - Artificial Intelligence
+MH  - Brain/pathology
+MH  - Magnetic Resonance Imaging/methods
+MH  - *Neurodegenerative Diseases/pathology
+OTO - NOTNLM
+OT  - Alzheimer's Disease
+OT  - Brain Tumor
+OT  - Magnetic Resonance Imaging
+OT  - Molecular Imaging
+OT  - Neurodegenerative Disorders
+COIS- Declaration of Competing Interest The authors declare that they have no known 
+      competing financial interests or personal relationships that could have appeared 
+      to influence the work reported in this paper.
+EDAT- 2024/02/17 10:42
+MHDA- 2024/03/12 06:43
+CRDT- 2024/02/16 19:13
+PHST- 2024/01/11 00:00 [received]
+PHST- 2024/02/11 00:00 [revised]
+PHST- 2024/02/11 00:00 [accepted]
+PHST- 2024/03/12 06:43 [medline]
+PHST- 2024/02/17 10:42 [pubmed]
+PHST- 2024/02/16 19:13 [entrez]
+AID - S1568-1637(24)00048-5 [pii]
+AID - 10.1016/j.arr.2024.102230 [doi]
+PST - ppublish
+SO  - Ageing Res Rev. 2024 Mar;95:102230. doi: 10.1016/j.arr.2024.102230. Epub 2024 Feb 
+      15.
+
+PMID- 33800815
+OWN - NLM
+STAT- MEDLINE
+DCOM- 20210430
+LR  - 20210430
+IS  - 1422-0067 (Electronic)
+IS  - 1422-0067 (Linking)
+VI  - 22
+IP  - 5
+DP  - 2021 Mar 6
+TI  - Advancing Drug Discovery for Neurological Disorders Using iPSC-Derived Neural 
+      Organoids.
+LID - 10.3390/ijms22052659 [doi]
+LID - 2659
+AB  - In the last decade, different research groups in the academic setting have 
+      developed induced pluripotent stem cell-based protocols to generate 
+      three-dimensional, multicellular, neural organoids. Their use to model brain 
+      biology, early neural development, and human diseases has provided new insights 
+      into the pathophysiology of neuropsychiatric and neurological disorders, 
+      including microcephaly, autism, Parkinson's disease, and Alzheimer's disease. 
+      However, the adoption of organoid technology for large-scale drug screening in 
+      the industry has been hampered by challenges with reproducibility, scalability, 
+      and translatability to human disease. Potential technical solutions to expand 
+      their use in drug discovery pipelines include Clustered Regularly Interspaced 
+      Short Palindromic Repeats (CRISPR) to create isogenic models, single-cell RNA 
+      sequencing to characterize the model at a cellular level, and machine learning to 
+      analyze complex data sets. In addition, high-content imaging, automated liquid 
+      handling, and standardized assays represent other valuable tools toward this 
+      goal. Though several open issues still hamper the full implementation of the 
+      organoid technology outside academia, rapid progress in this field will help to 
+      prompt its translation toward large-scale drug screening for neurological 
+      disorders.
+FAU - Costamagna, Gianluca
+AU  - Costamagna G
+AUID- ORCID: 0000-0002-7989-585X
+AD  - Dino Ferrari Centre, Department of Pathophysiology and Transplantation (DEPT), 
+      Neuroscience Section, University of Milan, 20122 Milan, Italy.
+AD  - IRCCS Foundation Ca' Granda Ospedale Maggiore Policlinico, Neurology Unit, Via 
+      Francesco Sforza 35, 20122 Milan, Italy.
+FAU - Comi, Giacomo Pietro
+AU  - Comi GP
+AD  - Dino Ferrari Centre, Department of Pathophysiology and Transplantation (DEPT), 
+      Neuroscience Section, University of Milan, 20122 Milan, Italy.
+AD  - IRCCS Foundation Ca' Granda Ospedale Maggiore Policlinico, Neurology Unit, Via 
+      Francesco Sforza 35, 20122 Milan, Italy.
+FAU - Corti, Stefania
+AU  - Corti S
+AD  - Dino Ferrari Centre, Department of Pathophysiology and Transplantation (DEPT), 
+      Neuroscience Section, University of Milan, 20122 Milan, Italy.
+AD  - IRCCS Foundation Ca' Granda Ospedale Maggiore Policlinico, Neurology Unit, Via 
+      Francesco Sforza 35, 20122 Milan, Italy.
+LA  - eng
+GR  - RF-2018-12366357 to Stefania Corti/Ministero della Salute/
+PT  - Journal Article
+PT  - Review
+DEP - 20210306
+PL  - Switzerland
+TA  - Int J Mol Sci
+JT  - International journal of molecular sciences
+JID - 101092791
+RN  - 0 (Drug Combinations)
+RN  - 0 (Laminin)
+RN  - 0 (Proteoglycans)
+RN  - 119978-18-6 (matrigel)
+RN  - 9007-34-5 (Collagen)
+SB  - IM
+MH  - Animals
+MH  - Automation
+MH  - Brain/cytology
+MH  - CRISPR-Cas Systems
+MH  - Cell Culture Techniques
+MH  - Collagen
+MH  - Drug Combinations
+MH  - Drug Discovery/*methods
+MH  - Drug Evaluation, Preclinical/methods
+MH  - Drug Industry/organization & administration
+MH  - Forecasting
+MH  - High-Throughput Screening Assays
+MH  - Humans
+MH  - Induced Pluripotent Stem Cells/cytology/*drug effects
+MH  - Laminin
+MH  - Machine Learning
+MH  - Microscopy/methods
+MH  - Nervous System Diseases/*drug therapy/pathology
+MH  - Organoids/*drug effects
+MH  - Proteoglycans
+MH  - RNA-Seq
+MH  - Reproducibility of Results
+MH  - Single-Cell Analysis
+PMC - PMC7961877
+OTO - NOTNLM
+OT  - CRISPR-Cas9
+OT  - bioengineering
+OT  - brain organoids
+OT  - disease modeling
+OT  - drug discovery
+OT  - induced pluripotent stem cells (iPSCs)
+OT  - machine learning
+OT  - neurological diseases
+OT  - organoid imaging
+OT  - single-cell sequencing
+COIS- The authors declare no conflict of interest.
+EDAT- 2021/04/04 06:00
+MHDA- 2021/05/01 06:00
+PMCR- 2021/03/06
+CRDT- 2021/04/03 01:06
+PHST- 2021/02/20 00:00 [received]
+PHST- 2021/03/01 00:00 [revised]
+PHST- 2021/03/03 00:00 [accepted]
+PHST- 2021/04/03 01:06 [entrez]
+PHST- 2021/04/04 06:00 [pubmed]
+PHST- 2021/05/01 06:00 [medline]
+PHST- 2021/03/06 00:00 [pmc-release]
+AID - ijms22052659 [pii]
+AID - ijms-22-02659 [pii]
+AID - 10.3390/ijms22052659 [doi]
+PST - epublish
+SO  - Int J Mol Sci. 2021 Mar 6;22(5):2659. doi: 10.3390/ijms22052659.
+
+PMID- 34635138
+OWN - NLM
+STAT- MEDLINE
+DCOM- 20211028
+LR  - 20240403
+IS  - 1758-9193 (Electronic)
+VI  - 13
+IP  - 1
+DP  - 2021 Oct 11
+TI  - Modifiable risk factors for dementia and dementia risk profiling. A user manual 
+      for Brain Health Services-part 2 of 6.
+PG  - 169
+LID - 10.1186/s13195-021-00895-4 [doi]
+LID - 169
+AB  - We envisage the development of new Brain Health Services to achieve primary and 
+      secondary dementia prevention. These services will complement existing memory 
+      clinics by targeting cognitively unimpaired individuals, where the focus is on 
+      risk profiling and personalized risk reduction interventions rather than 
+      diagnosing and treating late-stage disease. In this article, we review key 
+      potentially modifiable risk factors and genetic risk factors and discuss 
+      assessment of risk factors as well as additional fluid and imaging biomarkers 
+      that may enhance risk profiling. We then outline multidomain measures and risk 
+      profiling and provide practical guidelines for Brain Health Services, with 
+      consideration of outstanding uncertainties and challenges. Users of Brain Health 
+      Services should undergo risk profiling tailored to their age, level of risk, and 
+      availability of local resources. Initial risk assessment should incorporate a 
+      multidomain risk profiling measure. For users aged 39-64, we recommend the 
+      Cardiovascular Risk Factors, Aging, and Incidence of Dementia (CAIDE) Dementia 
+      Risk Score, whereas for users aged 65 and older, we recommend the Brief Dementia 
+      Screening Indicator (BDSI) and the Australian National University Alzheimer's 
+      Disease Risk Index (ANU-ADRI). The initial assessment should also include 
+      potentially modifiable risk factors including sociodemographic, lifestyle, and 
+      health factors. If resources allow, apolipoprotein E ɛ4 status testing and 
+      structural magnetic resonance imaging should be conducted. If this initial 
+      assessment indicates a low dementia risk, then low intensity interventions can be 
+      implemented. If the user has a high dementia risk, additional investigations 
+      should be considered if local resources allow. Common variant polygenic risk of 
+      late-onset AD can be tested in middle-aged or older adults. Rare variants should 
+      only be investigated in users with a family history of early-onset dementia in a 
+      first degree relative. Advanced imaging with 18-fluorodeoxyglucose positron 
+      emission tomography (FDG-PET) or amyloid PET may be informative in high risk 
+      users to clarify the nature and burden of their underlying pathologies. 
+      Cerebrospinal fluid biomarkers are not recommended for this setting, and 
+      blood-based biomarkers need further validation before clinical use. As new 
+      technologies become available, advances in artificial intelligence are likely to 
+      improve our ability to combine diverse data to further enhance risk profiling. 
+      Ultimately, Brain Health Services have the potential to reduce the future burden 
+      of dementia through risk profiling, risk communication, personalized risk 
+      reduction, and cognitive enhancement interventions.
+CI  - © 2021. The Author(s).
+FAU - Ranson, Janice M
+AU  - Ranson JM
+AD  - College of Medicine and Health, University of Exeter, Exeter, UK.
+AD  - Deep Dementia Phenotyping (DEMON) Network, Exeter, UK.
+FAU - Rittman, Timothy
+AU  - Rittman T
+AD  - Deep Dementia Phenotyping (DEMON) Network, Exeter, UK.
+AD  - Department of Clinical Neurosciences, University of Cambridge, Cambridge, UK.
+FAU - Hayat, Shabina
+AU  - Hayat S
+AD  - Department of Public Health and Primary Care, Cambridge Public Health, University 
+      of Cambridge, Cambridge, UK.
+FAU - Brayne, Carol
+AU  - Brayne C
+AD  - Department of Public Health and Primary Care, Cambridge Public Health, University 
+      of Cambridge, Cambridge, UK.
+FAU - Jessen, Frank
+AU  - Jessen F
+AD  - Department of Psychiatry and Psychotherapy, Medical Faculty, University of 
+      Cologne, Cologne, Germany.
+FAU - Blennow, Kaj
+AU  - Blennow K
+AD  - Department of Psychiatry and Neurochemistry, Institute of Neuroscience & 
+      Physiology, the Sahlgrenska Academy at the University of Gothenburg, Mölndal, 
+      Sweden; Clinical Neurochemistry Laboratory, Sahlgrenska University Hospital, 
+      Mölndal, Sweden.
+FAU - van Duijn, Cornelia
+AU  - van Duijn C
+AD  - Nuffield Department of Population Health, University of Oxford, Oxford, UK.
+FAU - Barkhof, Frederik
+AU  - Barkhof F
+AD  - Centre for Medical Image Computing, Department of Medical Physics and Biomedical 
+      Engineering, University College London, London, UK.
+AD  - Department of Radiology and Nuclear Medicine, Amsterdam University Medical 
+      Centers, Amsterdam, The Netherlands.
+FAU - Tang, Eugene
+AU  - Tang E
+AD  - Deep Dementia Phenotyping (DEMON) Network, Exeter, UK.
+AD  - Population Health Sciences Institute, Newcastle University, Newcastle upon Tyne, 
+      UK.
+FAU - Mummery, Catherine J
+AU  - Mummery CJ
+AD  - Deep Dementia Phenotyping (DEMON) Network, Exeter, UK.
+AD  - Dementia Research Centre, Institute of Neurology, University College London, and 
+      National Hospital for Neurology and Neurosurgery, University College London 
+      Hospital, London, UK.
+FAU - Stephan, Blossom C M
+AU  - Stephan BCM
+AD  - Institute of Mental Health, Division of Psychiatry and Applied Psychology, School 
+      of Medicine, Nottingham University, Nottingham, UK.
+FAU - Altomare, Daniele
+AU  - Altomare D
+AUID- ORCID: 0000-0003-1905-8993
+AD  - Laboratory of Neuroimaging of Aging (LANVIE), University of Geneva, Geneva, 
+      Switzerland.
+AD  - Memory Clinic, Geneva University Hospitals, Geneva, Switzerland.
+FAU - Frisoni, Giovanni B
+AU  - Frisoni GB
+AD  - Laboratory of Neuroimaging of Aging (LANVIE), University of Geneva, Geneva, 
+      Switzerland.
+AD  - Memory Clinic, Geneva University Hospitals, Geneva, Switzerland.
+FAU - Ribaldi, Federica
+AU  - Ribaldi F
+AD  - Laboratory of Neuroimaging of Aging (LANVIE), University of Geneva, Geneva, 
+      Switzerland.
+AD  - Memory Clinic, Geneva University Hospitals, Geneva, Switzerland.
+AD  - Laboratory of Alzheimer's Neuroimaging and Epidemiology (LANE), Saint John of God 
+      Clinical Research Centre, Brescia, Italy.
+AD  - Department of Molecular and Translational Medicine, University of Brescia, 
+      Brescia, Italy.
+FAU - Molinuevo, José Luis
+AU  - Molinuevo JL
+AD  - Barcelonaβeta Brain Research Center (BBRC), Pasqual Maragall Foundation, 
+      Barcelona, Spain.
+FAU - Scheltens, Philip
+AU  - Scheltens P
+AD  - Alzheimer Center Amsterdam, Department of Neurology, Amsterdam Neuroscience, 
+      Vrije Universiteit Amsterdam, Amsterdam UMC, Amsterdam, The Netherlands.
+AD  - Life Science Partners, Amsterdam, The Netherlands.
+FAU - Llewellyn, David J
+AU  - Llewellyn DJ
+AD  - College of Medicine and Health, University of Exeter, Exeter, UK. 
+      david.llewellyn@exeter.ac.uk.
+AD  - Deep Dementia Phenotyping (DEMON) Network, Exeter, UK. 
+      david.llewellyn@exeter.ac.uk.
+AD  - Alan Turing Institute, London, UK. david.llewellyn@exeter.ac.uk.
+AD  - 2.04 College House, St Luke's Campus, University of Exeter Medical School, 
+      Exeter, EX1 2 LU, UK. david.llewellyn@exeter.ac.uk.
+CN  - European Task Force for Brain Health Services
+LA  - eng
+GR  - G0601022/MRC_/Medical Research Council/United Kingdom
+GR  - G9901400/MRC_/Medical Research Council/United Kingdom
+GR  - RF1 AG055654/AG/NIA NIH HHS/United States
+GR  - DH_/Department of Health/United Kingdom
+PT  - Journal Article
+PT  - Research Support, N.I.H., Extramural
+PT  - Research Support, Non-U.S. Gov't
+PT  - Review
+DEP - 20211011
+PL  - England
+TA  - Alzheimers Res Ther
+JT  - Alzheimer's research & therapy
+JID - 101511643
+RN  - 0 (Biomarkers)
+SB  - IM
+MH  - Aged
+MH  - *Alzheimer Disease
+MH  - Artificial Intelligence
+MH  - Australia
+MH  - Biomarkers
+MH  - Brain/diagnostic imaging
+MH  - *Dementia/diagnostic imaging/epidemiology/genetics
+MH  - Health Services
+MH  - Humans
+MH  - Middle Aged
+MH  - Positron-Emission Tomography
+MH  - Risk Factors
+PMC - PMC8507172
+OTO - NOTNLM
+OT  - Aging
+OT  - Alzheimer’s disease
+OT  - Brain health services
+OT  - Dementia
+OT  - Prevention
+OT  - Public health
+OT  - Risk factors
+OT  - Risk profiling
+COIS- GBF reports grants from Alzheimer Forum Suisse, Académie Suisse des Sciences 
+      Médicales, Avid Radiopharmaceuticals, Biogen, GE International, Guerbert, 
+      Association Suisse pour la Recherche sur l’Alzheimer, IXICO, Merz Pharma, Nestlé, 
+      Novartis, Piramal, Roche, Siemens, Teva Pharmaceutical Industries, Vifor Pharma, 
+      and Alzheimer’s Association; he has received personal fees from AstraZeneca, Avid 
+      Radiopharmaceuticals, Elan Pharmaceuticals, GE International, Lundbeck, Pfizer, 
+      and TauRx Therapeutics. KB has served as a consultant, at advisory boards, or at 
+      data monitoring committees for Abcam, Axon, Biogen, JOMDD/Shimadzu. Julius 
+      Clinical, Lilly, MagQu, Novartis, Roche Diagnostics, and Siemens Healthineers, 
+      and is a co-founder of Brain Biomarker Solutions in Gothenburg AB (BBS), which is 
+      a part of the GU Ventures Incubator Program. JLM is currently a full time 
+      employee of Lundbeck and has previously served as a consultant or at advisory 
+      boards for the following for-profit companies, or has given lectures in symposia 
+      sponsored by the following for-profit companies: Roche Diagnostics, Genentech, 
+      Novartis, Lundbeck, Oryzon, Biogen, Lilly, Janssen, Green Valley, MSD, Eisai, 
+      Alector, BioCross, GE Healthcare, ProMIS Neurosciences. All other authors declare 
+      that they have no competing interests.
+FIR - Abramowicz, Marc
+IR  - Abramowicz M
+FIR - Altomare, Daniele
+IR  - Altomare D
+FIR - Barkhof, Frederik
+IR  - Barkhof F
+FIR - Berthier, Marcelo
+IR  - Berthier M
+FIR - Bieler, Melanie
+IR  - Bieler M
+FIR - Blennow, Kaj
+IR  - Blennow K
+FIR - Brayne, Carol
+IR  - Brayne C
+FIR - Brioschi, Andrea
+IR  - Brioschi A
+FIR - Carrera, Emmanuel
+IR  - Carrera E
+FIR - Chételat, Gael
+IR  - Chételat G
+FIR - Csajka, Chantal
+IR  - Csajka C
+FIR - Demonet, Jean-François
+IR  - Demonet JF
+FIR - Dodich, Alessandra
+IR  - Dodich A
+FIR - Dubois, Bruno
+IR  - Dubois B
+FIR - Frisoni, Giovanni B
+IR  - Frisoni GB
+FIR - Garibotto, Valentina
+IR  - Garibotto V
+FIR - Georges, Jean
+IR  - Georges J
+FIR - Hurst, Samia
+IR  - Hurst S
+FIR - Jessen, Frank
+IR  - Jessen F
+FIR - Kivipelto, Miia
+IR  - Kivipelto M
+FIR - J Llewellyn, David
+IR  - J Llewellyn D
+FIR - McWhirter, Laura
+IR  - McWhirter L
+FIR - Milne, Richard
+IR  - Milne R
+FIR - Minguillón, Carolina
+IR  - Minguillón C
+FIR - Miniussi, Carlo
+IR  - Miniussi C
+FIR - Molinuevo, José Luis
+IR  - Molinuevo JL
+FIR - Nilsson, Peter M
+IR  - Nilsson PM
+FIR - Ranson, Janice M
+IR  - Ranson JM
+FIR - Ribaldi, Federica
+IR  - Ribaldi F
+FIR - Ritchie, Craig
+IR  - Ritchie C
+FIR - Scheltens, Philip
+IR  - Scheltens P
+FIR - Solomon, Alina
+IR  - Solomon A
+FIR - van der Flier, Wiesje
+IR  - van der Flier W
+FIR - van Duijn, Cornelia
+IR  - van Duijn C
+FIR - Vellas, Bruno
+IR  - Vellas B
+FIR - Visser, Leonie
+IR  - Visser L
+EDAT- 2021/10/13 06:00
+MHDA- 2021/10/29 06:00
+PMCR- 2021/10/11
+CRDT- 2021/10/12 05:37
+PHST- 2021/03/12 00:00 [received]
+PHST- 2021/08/26 00:00 [accepted]
+PHST- 2021/10/12 05:37 [entrez]
+PHST- 2021/10/13 06:00 [pubmed]
+PHST- 2021/10/29 06:00 [medline]
+PHST- 2021/10/11 00:00 [pmc-release]
+AID - 10.1186/s13195-021-00895-4 [pii]
+AID - 895 [pii]
+AID - 10.1186/s13195-021-00895-4 [doi]
+PST - epublish
+SO  - Alzheimers Res Ther. 2021 Oct 11;13(1):169. doi: 10.1186/s13195-021-00895-4.
+
+PMID- 39293530
+OWN - NLM
+STAT- MEDLINE
+DCOM- 20241101
+LR  - 20241101
+IS  - 1872-9649 (Electronic)
+IS  - 1568-1637 (Linking)
+VI  - 101
+DP  - 2024 Nov
+TI  - AI-driven innovations in Alzheimer's disease: Integrating early diagnosis, 
+      personalized treatment, and prognostic modelling.
+PG  - 102497
+LID - S1568-1637(24)00315-5 [pii]
+LID - 10.1016/j.arr.2024.102497 [doi]
+AB  - Alzheimer's disease (AD) presents a significant challenge in neurodegenerative 
+      research and clinical practice due to its complex etiology and progressive 
+      nature. The integration of artificial intelligence (AI) into the diagnosis, 
+      treatment, and prognostic modelling of AD holds promising potential to transform 
+      the landscape of dementia care. This review explores recent advancements in AI 
+      applications across various stages of AD management. In early diagnosis, 
+      AI-enhanced neuroimaging techniques, including MRI, PET, and CT scans, enable 
+      precise detection of AD biomarkers. Machine learning models analyze these images 
+      to identify patterns indicative of early cognitive decline. Additionally, AI 
+      algorithms are employed to detect genetic and proteomic biomarkers, facilitating 
+      early intervention. Cognitive and behavioral assessments have also benefited from 
+      AI, with tools that enhance the accuracy of neuropsychological tests and analyze 
+      speech and language patterns for early signs of dementia. Personalized treatment 
+      strategies have been revolutionized by AI-driven approaches. In drug discovery, 
+      virtual screening and drug repurposing, guided by predictive modelling, 
+      accelerate the identification of effective treatments. AI also aids in tailoring 
+      therapeutic interventions by predicting individual responses to treatments and 
+      monitoring patient progress, allowing for dynamic adjustment of care plans. 
+      Prognostic modelling, another critical area, utilizes AI to predict disease 
+      progression through longitudinal data analysis and risk prediction models. The 
+      integration of multi-modal data, combining clinical, genetic, and imaging 
+      information, enhances the accuracy of these predictions. Deep learning techniques 
+      are particularly effective in fusing diverse data types to uncover new insights 
+      into disease mechanisms and progression. Despite these advancements, challenges 
+      remain, including ethical considerations, data privacy, and the need for seamless 
+      integration of AI tools into clinical workflows. This review underscores the 
+      transformative potential of AI in AD management while highlighting areas for 
+      future research and development. By leveraging AI, the healthcare community can 
+      improve early diagnosis, personalize treatments, and predict disease outcomes 
+      more accurately, ultimately enhancing the quality of life for individuals with 
+      AD.
+CI  - Copyright © 2024 Elsevier B.V. All rights reserved.
+FAU - Kale, Mayur
+AU  - Kale M
+AD  - Smt. Kishoritai Bhoyar College of Pharmacy, Kamptee, Nagpur, Maharashtra 441002, 
+      India. Electronic address: mayur.kale28@gmail.com.
+FAU - Wankhede, Nitu
+AU  - Wankhede N
+AD  - Smt. Kishoritai Bhoyar College of Pharmacy, Kamptee, Nagpur, Maharashtra 441002, 
+      India. Electronic address: nitu.wankhede211994@gmail.com.
+FAU - Pawar, Rupali
+AU  - Pawar R
+AD  - Smt. Kishoritai Bhoyar College of Pharmacy, Kamptee, Nagpur, Maharashtra 441002, 
+      India. Electronic address: pawarrupali327@gmail.com.
+FAU - Ballal, Suhas
+AU  - Ballal S
+AD  - Department of Chemistry and Biochemistry, School of Sciences, JAIN (Deemed to be 
+      University), Bangalore, Karnataka, India. Electronic address: 
+      b.suhas@jainuniversity.ac.in.
+FAU - Kumawat, Rohit
+AU  - Kumawat R
+AD  - Department of Neurology, National Institute of Medical Sciences, NIMS 
+      University, Jaipur, Rajasthan, India. Electronic address: 
+      Rohit.Kumawat1@nimsuniversity.org.
+FAU - Goswami, Manish
+AU  - Goswami M
+AD  - Chandigarh Pharmacy College, Chandigarh Group of Colleges, Jhanjeri, 
+      Mohali, Punjab 140307, India. Electronic address: 
+      Manish2411.research@cgcjhanjeri.in.
+FAU - Khalid, Mohammad
+AU  - Khalid M
+AD  - Department of pharmacognosy, College of Pharmacy, Prince Sattam Bin Abdulaziz 
+      University Alkharj, Saudi Arabia. Electronic address: khali@gmail.com.
+FAU - Taksande, Brijesh
+AU  - Taksande B
+AD  - Smt. Kishoritai Bhoyar College of Pharmacy, Kamptee, Nagpur, Maharashtra 441002, 
+      India. Electronic address: brijeshtaksande@gmail.com.
+FAU - Upaganlawar, Aman
+AU  - Upaganlawar A
+AD  - SNJB's Shriman Sureshdada Jain College of Pharmacy, Neminagar, Chandwad, 
+      Nashik, Maharashtra, India. Electronic address: amanrxy@gmail.com.
+FAU - Umekar, Milind
+AU  - Umekar M
+AD  - Smt. Kishoritai Bhoyar College of Pharmacy, Kamptee, Nagpur, Maharashtra 441002, 
+      India. Electronic address: drmilindumekar@gmail.com.
+FAU - Kopalli, Spandana Rajendra
+AU  - Kopalli SR
+AD  - Department of Bioscience and Biotechnology, Sejong University, Gwangjin-gu, Seoul 
+      05006, Republic of Korea. Electronic address: spandanak@sejong.ac.kr.
+FAU - Koppula, Sushruta
+AU  - Koppula S
+AD  - College of Biomedical and Health Sciences, Konkuk University, 
+      Chungju-Si, Chungju-Si, Chungcheongbuk Do 27478, Republic of Korea. Electronic 
+      address: sushrutak@gmail.com.
+LA  - eng
+PT  - Journal Article
+PT  - Review
+DEP - 20240916
+PL  - England
+TA  - Ageing Res Rev
+JT  - Ageing research reviews
+JID - 101128963
+SB  - IM
+MH  - Humans
+MH  - *Alzheimer Disease/therapy/diagnosis/diagnostic imaging/metabolism
+MH  - *Artificial Intelligence
+MH  - *Early Diagnosis
+MH  - *Precision Medicine/methods
+MH  - Prognosis
+MH  - Neuroimaging/methods
+OTO - NOTNLM
+OT  - AD
+OT  - AI
+OT  - CBA
+OT  - Genetic biomarkers
+OT  - Neuroimaging
+COIS- Declaration of Competing Interest None declared.
+EDAT- 2024/09/19 00:46
+MHDA- 2024/11/02 23:13
+CRDT- 2024/09/18 19:22
+PHST- 2024/07/02 00:00 [received]
+PHST- 2024/08/14 00:00 [revised]
+PHST- 2024/09/04 00:00 [accepted]
+PHST- 2024/11/02 23:13 [medline]
+PHST- 2024/09/19 00:46 [pubmed]
+PHST- 2024/09/18 19:22 [entrez]
+AID - S1568-1637(24)00315-5 [pii]
+AID - 10.1016/j.arr.2024.102497 [doi]
+PST - ppublish
+SO  - Ageing Res Rev. 2024 Nov;101:102497. doi: 10.1016/j.arr.2024.102497. Epub 2024 
+      Sep 16.
+
+PMID- 33942449
+OWN - NLM
+STAT- MEDLINE
+DCOM- 20220324
+LR  - 20220324
+IS  - 1097-0193 (Electronic)
+IS  - 1065-9471 (Print)
+IS  - 1065-9471 (Linking)
+VI  - 42
+IP  - 9
+DP  - 2021 Jun 15
+TI  - Diagnostic power of resting-state fMRI for detection of network connectivity in 
+      Alzheimer's disease and mild cognitive impairment: A systematic review.
+PG  - 2941-2968
+LID - 10.1002/hbm.25369 [doi]
+AB  - Resting-state fMRI (rs-fMRI) detects functional connectivity (FC) abnormalities 
+      that occur in the brains of patients with Alzheimer's disease (AD) and mild 
+      cognitive impairment (MCI). FC of the default mode network (DMN) is commonly 
+      impaired in AD and MCI. We conducted a systematic review aimed at determining the 
+      diagnostic power of rs-fMRI to identify FC abnormalities in the DMN of patients 
+      with AD or MCI compared with healthy controls (HCs) using machine learning (ML) 
+      methods. Multimodal support vector machine (SVM) algorithm was the commonest form 
+      of ML method utilized. Multiple kernel approach can be utilized to aid in the 
+      classification by incorporating various discriminating features, such as FC 
+      graphs based on "nodes" and "edges" together with structural MRI-based regional 
+      cortical thickness and gray matter volume. Other multimodal features include 
+      neuropsychiatric testing scores, DTI features, and regional cerebral blood flow. 
+      Among AD patients, the posterior cingulate cortex (PCC)/Precuneus was noted to be 
+      a highly affected hub of the DMN that demonstrated overall reduced FC. Whereas 
+      reduced DMN FC between the PCC and anterior cingulate cortex (ACC) was observed 
+      in MCI patients. Evidence indicates that the nodes of the DMN can offer moderate 
+      to high diagnostic power to distinguish AD and MCI patients. Nevertheless, 
+      various concerns over the homogeneity of data based on patient selection, scanner 
+      effects, and the variable usage of classifiers and algorithms pose a challenge 
+      for ML-based image interpretation of rs-fMRI datasets to become a mainstream 
+      option for diagnosing AD and predicting the conversion of HC/MCI to AD.
+CI  - © 2021 The Authors. Human Brain Mapping published by Wiley Periodicals LLC.
+FAU - Ibrahim, Buhari
+AU  - Ibrahim B
+AD  - Department of Radiology, Faculty of Medicine and Health Sciences, Universiti 
+      Putra Malaysia, Serdang, Selangor, Malaysia.
+AD  - Department of Physiology, Faculty of Basic Medical Sciences, Bauchi State 
+      University Gadau, Gadau, Nigeria.
+FAU - Suppiah, Subapriya
+AU  - Suppiah S
+AUID- ORCID: 0000-0002-2495-6408
+AD  - Department of Radiology, Faculty of Medicine and Health Sciences, Universiti 
+      Putra Malaysia, Serdang, Selangor, Malaysia.
+FAU - Ibrahim, Normala
+AU  - Ibrahim N
+AD  - Department of Psychiatry, Faculty of Medicine and Health Sciences, Universiti 
+      Putra Malaysia, Serdang, Selangor, Malaysia.
+FAU - Mohamad, Mazlyfarina
+AU  - Mohamad M
+AD  - Centre for Diagnostic and Applied Health Sciences, Faculty of Health Sciences, 
+      Universiti Kebangsaan Malaysia, Kuala Lumpur, Malaysia.
+FAU - Hassan, Hasyma Abu
+AU  - Hassan HA
+AD  - Department of Radiology, Faculty of Medicine and Health Sciences, Universiti 
+      Putra Malaysia, Serdang, Selangor, Malaysia.
+FAU - Nasser, Nisha Syed
+AU  - Nasser NS
+AD  - Department of Radiology, Faculty of Medicine and Health Sciences, Universiti 
+      Putra Malaysia, Serdang, Selangor, Malaysia.
+FAU - Saripan, M Iqbal
+AU  - Saripan MI
+AD  - Department of Computer and Communication System Engineering, Universiti Putra 
+      Malaysia, Serdang, Selangor, Malaysia.
+LA  - eng
+PT  - Journal Article
+PT  - Research Support, Non-U.S. Gov't
+PT  - Systematic Review
+DEP - 20210504
+PL  - United States
+TA  - Hum Brain Mapp
+JT  - Human brain mapping
+JID - 9419065
+SB  - IM
+EIN - Hum Brain Mapp. 2021 Dec 15;42(18):6099. doi: 10.1002/hbm.25704. PMID: 34724265
+MH  - Alzheimer Disease/*diagnostic imaging
+MH  - Cognitive Dysfunction/*diagnostic imaging
+MH  - Connectome/*standards
+MH  - Humans
+MH  - Machine Learning
+MH  - Magnetic Resonance Imaging/*standards
+MH  - Predictive Value of Tests
+PMC - PMC8127155
+OTO - NOTNLM
+OT  - Alzheimer's disease
+OT  - accuracy
+OT  - classifiers
+OT  - default mode network
+OT  - functional MRI
+OT  - machine learning
+COIS- The authors declare and report no conflict of interest.
+EDAT- 2021/05/05 06:00
+MHDA- 2022/03/25 06:00
+PMCR- 2021/05/04
+CRDT- 2021/05/04 07:17
+PHST- 2021/01/29 00:00 [revised]
+PHST- 2020/08/01 00:00 [received]
+PHST- 2021/02/01 00:00 [accepted]
+PHST- 2021/05/05 06:00 [pubmed]
+PHST- 2022/03/25 06:00 [medline]
+PHST- 2021/05/04 07:17 [entrez]
+PHST- 2021/05/04 00:00 [pmc-release]
+AID - HBM25369 [pii]
+AID - 10.1002/hbm.25369 [doi]
+PST - ppublish
+SO  - Hum Brain Mapp. 2021 Jun 15;42(9):2941-2968. doi: 10.1002/hbm.25369. Epub 2021 
+      May 4.

@@ -21,6 +21,8 @@ import { ReloadIcon } from "@radix-ui/react-icons"; // For loading spinners on b
 import { CreateAgentDialog } from '@/components/CreateAgentDialog'; // <-- Import Agent Dialog
 import { Label } from "@/components/ui/label"; // <-- Import Label for dropdown
 import { useRouter } from 'next/navigation'; // <-- 1. Import useRouter
+import { AdvancedArticleImport } from '@/components/AdvancedArticleImport';
+import { type Article, type FilteringResult } from '@/lib/articleFiltering';
 
 // Define the screening decision type mirroring the enum
 type ScreeningDecision = 'include' | 'exclude' | 'maybe' | 'unscreened';
@@ -615,6 +617,7 @@ export default function DashboardPage() {
                   console.error(`Batch save error (index ${i}):`, saveError);
                   errorOccurred = true;
                   setProcessingTxtError(`Save error: ${saveError.message}`);
+                  break;
               } else {
                   saved += batch.length;
               }
@@ -1049,6 +1052,63 @@ export default function DashboardPage() {
       fetchAgentStats(selectedProjectId);  // Refetch agent stats
   };
 
+  // --- Handle Advanced Article Import with Filtering ---
+  const handleAdvancedArticleImport = useCallback(async (articles: Article[], filteringResult: FilteringResult) => {
+    if (!selectedProjectId) {
+      console.error("No project selected for advanced import");
+      return;
+    }
+
+    setIsProcessingTxt(true);
+    setProcessingTxtMessage("Saving filtered articles to database...");
+    setProcessingTxtError(null);
+    
+    try {
+      const articlesToSave: ArticleSaveData[] = articles.map(a => ({
+        project_id: selectedProjectId,
+        pmid: a.pmid,
+        title: a.title,
+        abstract: a.abstract
+      }));
+
+      const BATCH_SIZE = 500;
+      let saved = 0;
+      let errorOccurred = false;
+
+      for (let i = 0; i < articlesToSave.length; i += BATCH_SIZE) {
+        const batch = articlesToSave.slice(i, i + BATCH_SIZE);
+        setProcessingTxtMessage(`Saving batch ${Math.floor(i / BATCH_SIZE) + 1}... (${i + batch.length}/${articlesToSave.length})`);
+        
+        const { error: saveError } = await supabase
+          .from('articles')
+          .upsert(batch, { onConflict: 'project_id, pmid', ignoreDuplicates: true });
+
+        if (saveError) {
+          console.error(`Batch save error (index ${i}):`, saveError);
+          errorOccurred = true;
+          setProcessingTxtError(`Save error: ${saveError.message}`);
+          break;
+        } else {
+          saved += batch.length;
+        }
+      }
+
+      if (!errorOccurred) {
+        const filteringSummary = `Filtering removed: ${filteringResult.removedCount.duplicates} duplicates, ${filteringResult.removedCount.excludedByAllArticles + filteringResult.removedCount.excludedByReviewArticles + filteringResult.removedCount.excludedByUsefulArticles} from exclusion lists.`;
+        setProcessingTxtMessage(`Successfully saved ${saved} filtered articles. ${filteringSummary}`);
+        await fetchScreeningStats(selectedProjectId, user?.id ?? null);
+      } else {
+        setProcessingTxtMessage(`Finished with errors. Saved ${saved} before error.`);
+      }
+    } catch (err: any) {
+      console.error("Error saving filtered articles:", err);
+      setProcessingTxtError(err.message);
+      setProcessingTxtMessage(null);
+    } finally {
+      setIsProcessingTxt(false);
+    }
+  }, [selectedProjectId, fetchScreeningStats, user?.id]);
+
   // --- Render Logic ---
   if (loading) { return <div className="container mx-auto px-4 py-8 text-center">Loading dashboard...</div>; }
   if (!user) {
@@ -1149,36 +1209,14 @@ export default function DashboardPage() {
                  Project: {selectedProject?.name ?? 'Loading...'}
               </h2>
 
-              {/* --- TXT File Import Section (Existing) --- */}
+              {/* --- NEW: Advanced Article Import Section --- */}
               <section>
-                <Card className="bg-secondary/30">
-                    <CardHeader><CardTitle className="text-lg">Import Articles (PMID Format TXT)</CardTitle></CardHeader>
-                    <CardContent>
-                        <ArticleDropzone
+                <AdvancedArticleImport
                             projectId={selectedProjectId}
-                            onFileRead={handleTxtFileContent}
-                            className={isProcessingTxt ? 'opacity-75 cursor-default' : ''}
+                  onArticlesProcessed={handleAdvancedArticleImport}
                             disabled={isProcessingTxt}
-                            />
-                        {/* Display Processing Messages */}
-                        {isProcessingTxt && !processingTxtMessage && !processingTxtError && ( <Alert variant="default" className="mt-4"><AlertDescription>Processing file...</AlertDescription></Alert> )}
-                        {processingTxtMessage && !processingTxtError && ( <Alert variant={"default"} className="mt-4"><AlertDescription>{processingTxtMessage}</AlertDescription></Alert> )}
-                        {processingTxtError && ( <Alert variant="destructive" className="mt-4"><AlertTitle>Error</AlertTitle><AlertDescription>{processingTxtError}</AlertDescription></Alert> )}
-                    </CardContent>
-                </Card>
-                {/* Parsed TXT Articles Preview & Save */}
-                {parsedTxtArticles.length > 0 && (
-                    <div className="mt-4">
-                        <div className="flex justify-between items-center mb-2">
-                            <h3 className="text-md font-semibold">Parsed Articles Preview ({parsedTxtArticles.length})</h3>
-                            {!isProcessingTxt && ( <Button onClick={handleSaveTxtArticles} size="sm"> Save Articles to Project </Button> )}
-                            {isProcessingTxt && processingTxtMessage?.startsWith("Saving") && ( <Button size="sm" disabled><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Saving... </Button> )}
-                        </div>
-                        <div className="space-y-2 max-h-[200px] overflow-y-auto pr-2 border rounded p-2">
-                            {parsedTxtArticles.map((a, i) => ( <div key={i} className="text-xs p-1 bg-muted/40 rounded truncate"><strong>{a.pmid}:</strong> {a.title}</div> ))}
-                        </div>
-                    </div>
-                )}
+                  className="bg-secondary/20"
+                />
               </section>
 
               <Separator />
