@@ -59,7 +59,7 @@ export default function ScreeningInterface({ projectId }: { projectId: string })
     getUser();
   }, [router]); // Removed router dependency if not pushing
 
-  // Fetch Next Unscreened Article (Modified)
+  // Fetch Next Unscreened Article (Modified for URL length fix)
   const fetchNextUnscreenedArticle = useCallback(async (initialFetch = false) => {
     if (!projectId || !user?.id) return;
 
@@ -76,53 +76,68 @@ export default function ScreeningInterface({ projectId }: { projectId: string })
     setIsComplete(false);
 
     try {
-         // 1. Fetch IDs of already screened articles first
-         const { data: screenedData, error: screenedError } = await supabase
-            .from('screening_decisions')
-            .select('article_id')
-            .eq('project_id', projectId)
-            .eq('user_id', user.id);
+         // NEW APPROACH: Use a more efficient query to avoid URL length limits
+         // Instead of excluding all screened articles, we'll find the next unscreened article
+         // using a LEFT JOIN approach via RPC or a more efficient query
+         
+         // Option 1: Use a simpler approach with pagination and filtering client-side for small batches
+         // This is more efficient than sending hundreds of IDs in the URL
+         
+         const BATCH_SIZE = 50; // Fetch articles in small batches to check
+         let foundArticle: ScreeningArticle | null = null;
+         let offset = 0;
+         const MAX_ITERATIONS = 100; // Prevent infinite loops
+         let iterations = 0;
 
-         if (screenedError) throw screenedError;
+         while (!foundArticle && iterations < MAX_ITERATIONS) {
+             // 1. Fetch a batch of articles ordered by creation date
+             const { data: articleBatch, error: articleError } = await supabase
+                 .from('articles')
+                 .select('id, pmid, title, abstract')
+                 .eq('project_id', projectId)
+                 .order('created_at', { ascending: true })
+                 .range(offset, offset + BATCH_SIZE - 1);
 
-         const screenedArticleIds = screenedData?.map(d => d.article_id) || [];
-         console.log(`User ${user.id} has screened ${screenedArticleIds.length} articles for project ${projectId}`); // Debugging
+             if (articleError) throw articleError;
+             
+             if (!articleBatch || articleBatch.length === 0) {
+                 // No more articles to check
+                 console.log("No more articles found in the project.");
+                 setIsComplete(true);
+                 setCurrentArticle(null);
+                 return;
+             }
 
-         // 2. Build the query
-         let query = supabase
-             .from('articles')
-             .select('id, pmid, title, abstract')
-             .eq('project_id', projectId);
+             // 2. Get screened article IDs for this batch only
+             const batchArticleIds = articleBatch.map(a => a.id);
+             const { data: screenedData, error: screenedError } = await supabase
+                 .from('screening_decisions')
+                 .select('article_id')
+                 .eq('project_id', projectId)
+                 .eq('user_id', user.id)
+                 .in('article_id', batchArticleIds);
 
-         // 3. Conditionally add the .not() filter ONLY if there are screened IDs
-         if (screenedArticleIds.length > 0) {
-             query = query.not('id', 'in', `(${screenedArticleIds.join(',')})`);
+             if (screenedError) throw screenedError;
+
+             const screenedArticleIds = new Set(screenedData?.map(d => d.article_id) || []);
+
+             // 3. Find the first unscreened article in this batch
+             foundArticle = articleBatch.find(article => !screenedArticleIds.has(article.id)) || null;
+
+             if (!foundArticle) {
+                 // Move to next batch
+                 offset += BATCH_SIZE;
+                 iterations++;
+                 console.log(`No unscreened articles in batch ${iterations}, checking next batch...`);
+             }
          }
 
-         // 4. Add ordering, limit, and execute
-         const { data: nextArticleData, error: nextArticleError } = await query
-             .order('created_at', { ascending: true }) // Or random() if preferred
-             .limit(1)
-             .single(); // Expect only one or null
-
-         // 5. Process results
-         if (nextArticleError) {
-             if (nextArticleError.code === 'PGRST116') { // "No rows found"
-                 console.log("No more unscreened articles found.");
-                 setIsComplete(true);
-                 setCurrentArticle(null); // Clear article when screening is actually complete
-             } else {
-                 // Log the specific error before throwing
-                 console.error("Supabase fetch article error:", nextArticleError);
-                 throw nextArticleError; // Rethrow other errors
-             }
-         } else if (nextArticleData) {
-             console.log("Next article fetched:", nextArticleData.id);
-             setCurrentArticle(nextArticleData); // Update article content
+         if (foundArticle) {
+             console.log("Next article fetched:", foundArticle.id);
+             setCurrentArticle(foundArticle);
              setIsComplete(false);
          } else {
-             // Should be caught by PGRST116, but as fallback:
-             console.log("No next article data returned, assuming complete.");
+             console.log("No more unscreened articles found after checking all batches.");
              setIsComplete(true);
              setCurrentArticle(null);
          }
@@ -130,8 +145,6 @@ export default function ScreeningInterface({ projectId }: { projectId: string })
     } catch (err: any) {
       console.error("Error fetching next unscreened article:", err);
       setError(`Failed to load next article: ${err.message}`);
-      // Optionally clear current article on fetch error? Or keep it?
-      // setCurrentArticle(null);
     } finally {
       // Turn off loading indicators
       if (initialFetch) {
@@ -139,7 +152,7 @@ export default function ScreeningInterface({ projectId }: { projectId: string })
       }
       setIsSaving(false); // Always turn off saving state
     }
-  }, [projectId, user?.id]); // Ensure user.id is stable if user object changes ref
+  }, [projectId, user?.id]);
 
   // Fetch first article (Pass true for initialFetch)
   useEffect(() => {
