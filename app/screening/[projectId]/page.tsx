@@ -25,16 +25,17 @@ export async function generateStaticParams() {
 }
 
 // --- Page Server Component ---
-// TEMPORARY DIAGNOSTIC: Use 'any' for props
-export default function ScreeningPage(props: any) {
-  // Still access params, assuming the structure is correct at runtime
-  const projectId = props?.params?.projectId;
+// Fix for Next.js 15+ async params requirement
+export default async function ScreeningPage(props: {
+  params: Promise<{ projectId: string }>
+}) {
+  // Await the params before accessing properties
+  const params = await props.params;
+  const projectId = params.projectId;
 
-  // Add a check in case params are somehow undefined at runtime due to the 'any'
+  // Add a check in case projectId is somehow undefined
   if (!projectId) {
-    // Handle the error appropriately - maybe render an error message
-    // or redirect. For now, just log and return null.
-    console.error("Error: projectId is missing in props!");
+    console.error("Error: projectId is missing in params!");
     return <div>Error: Project ID not found.</div>;
   }
 
