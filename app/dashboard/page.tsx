@@ -282,22 +282,42 @@ export default function DashboardPage() {
 
         if (totalError) throw new Error(`Failed to get total article count: ${totalError.message}`);
 
-        // 2. Get ALL screening decisions made by the user for this project
-        const { data: userDecisions, error: decisionError } = await supabase
-            .from('screening_decisions')
-            .select('decision') // Select only the decision column
-            .eq('project_id', projectId)
-            .eq('user_id', currentUserId)
-            .in('decision', ['include', 'exclude', 'maybe']); // Only fetch actual decisions
+        // 2. Get ALL screening decisions made by the user for this project (IN BATCHES)
+        let allUserDecisions: { decision: string }[] = [];
+        let currentOffset = 0;
+        const BATCH_DECISION_SIZE = 1000; // Supabase default limit
+        let fetchMore = true;
 
-        if (decisionError) throw new Error(`Failed to get user decisions: ${decisionError.message}`);
+        console.log("Fetching all user decisions in batches...");
+        while (fetchMore) {
+            const { data: batchDecisions, error: decisionError } = await supabase
+                .from('screening_decisions')
+                .select('decision') // Select only the decision column
+                .eq('project_id', projectId)
+                .eq('user_id', currentUserId)
+                .in('decision', ['include', 'exclude', 'maybe'])
+                .range(currentOffset, currentOffset + BATCH_DECISION_SIZE - 1); // Fetch in batches
+
+            if (decisionError) throw new Error(`Failed to get user decisions batch: ${decisionError.message}`);
+
+            if (batchDecisions && batchDecisions.length > 0) {
+                allUserDecisions = allUserDecisions.concat(batchDecisions as { decision: string }[]);
+                currentOffset += batchDecisions.length;
+                if (batchDecisions.length < BATCH_DECISION_SIZE) {
+                    fetchMore = false; // Reached the end
+                }
+            } else {
+                fetchMore = false; // No more decisions found
+            }
+        }
+        console.log(`Total user decisions fetched: ${allUserDecisions.length}`);
 
         // 3. Count the decisions client-side
         let includeCount = 0;
         let excludeCount = 0;
         let maybeCount = 0;
 
-        userDecisions?.forEach(item => {
+        allUserDecisions.forEach(item => {
             if (item.decision === 'include') includeCount++;
             else if (item.decision === 'exclude') excludeCount++;
             else if (item.decision === 'maybe') maybeCount++;
